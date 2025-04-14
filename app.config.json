@@ -1,0 +1,10 @@
+{
+  "environmentUrl": "https://zey48022.apps.dynatrace.com/",
+  "app": {
+    "name": "Kubetrix DT",
+    "version": "0.0.0",
+    "description": "A starting project with routing, fetching data, and charting",
+    "id": "my.kubetrix.dt",
+    "scopes": [{ "name": "storage:logs:read", "comment": "default template" }, { "name": "storage:buckets:read", "comment": "default template" }]
+  }
+}
