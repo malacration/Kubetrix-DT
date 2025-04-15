@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Data } from "./pages/Data";
 import { Header } from "./layout/Header";
 
 import { Page,TitleBar } from '@dynatrace/strato-components-preview/layouts';
