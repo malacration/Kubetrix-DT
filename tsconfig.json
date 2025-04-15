@@ -7,7 +7,7 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "importHelpers": false /* Import emit helpers from 'tslib'. */,
-    "jsx": "react",
+    "jsx": "react-jsx",
     "lib": ["DOM", "DOM.Iterable", "esnext"],
     "module": "ESNext",
     "moduleResolution": "node",

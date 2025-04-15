@@ -1,0 +1,45 @@
+name: Deploy Dynatrace App on Release
+
+on:
+  release:
+    types: [created]
+
+env:
+  DYNATRACE_ENV_URL: ${{ secrets.DYNATRACE_ENV_URL }}
+  DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Update app.config.json with release version and environment URL
+        run: |
+          VERSION=${{ github.event.release.tag_name }}
+          echo "Updating app.config.json with version $VERSION and env URL"
+          jq \
+            --arg version "$VERSION" \
+            --arg envUrl "$DYNATRACE_ENV_URL" \
+            '.environmentUrl = $envUrl | .app.version = $version' \
+            app.config.json > tmp.config.json && mv tmp.config.json app.config.json
+        shell: bash
+
+      - name: Install Dynatrace CLI
+        run: npm install -g @dynatrace/cli
+
+      - name: Deploy to Dynatrace
+        run: dt apps deploy --yes
+        env:
+          DYNATRACE_ENV_URL: ${{ secrets.DYNATRACE_ENV_URL }}
+          DYNATRACE_API_TOKEN: ${{ secrets.DYNATRACE_API_TOKEN }}

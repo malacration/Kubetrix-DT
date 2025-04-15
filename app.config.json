@@ -1,10 +1,15 @@
 {
-  "environmentUrl": "https://zey48022.apps.dynatrace.com/",
+  "environmentUrl": "$DYNATRACE_ENV_URL",
   "app": {
     "name": "Kubetrix DT",
     "version": "0.0.0",
-    "description": "A starting project with routing, fetching data, and charting",
+    "description": "Kubetrix is a Node.js application that integrates with Dynatrace to collect and send custom metrics from Kubernetes-based applications, enabling enhanced observability and performance insights.",
     "id": "my.kubetrix.dt",
-    "scopes": [{ "name": "storage:logs:read", "comment": "default template" }, { "name": "storage:buckets:read", "comment": "default template" }]
+    "scopes": [
+      { "name": "storage:logs:read", "comment": "default template" }, 
+      { "name": "storage:buckets:read", "comment": "default template" },
+      { "name": "storage:metrics:read", "comment": "Allows to read metrics" },
+      { "name": "storage:entities:read", "comment": "Allows to read entities" }
+    ]
   }
 }
