@@ -36,11 +36,8 @@ jobs:
             app.config.json > tmp.config.json && mv tmp.config.json app.config.json
         shell: bash
 
-      - name: Install Dynatrace CLI
-        run: npm install -g @dynatrace/cli
-
       - name: Deploy to Dynatrace
-        run: dt apps deploy --yes
+        run: npm run deploy
         env:
           DYNATRACE_ENV_URL: ${{ secrets.DYNATRACE_ENV_URL }}
           DT_APP_OAUTH_CLIENT_ID: ${{ secrets.DT_APP_OAUTH_CLIENT_ID }}
