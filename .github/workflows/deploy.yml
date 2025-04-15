@@ -34,6 +34,7 @@ jobs:
             --arg envUrl "$DYNATRACE_ENV_URL" \
             '.environmentUrl = $envUrl | .app.version = $version' \
             app.config.json > tmp.config.json && mv tmp.config.json app.config.json
+          cat app.config.json
         shell: bash
 
       - name: Deploy to Dynatrace
