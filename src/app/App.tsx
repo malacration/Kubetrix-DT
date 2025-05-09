@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Header } from "./layout/Header";
 
-import { Page,TitleBar } from '@dynatrace/strato-components-preview/layouts';
+import { Page,TitleBar,} from '@dynatrace/strato-components-preview/layouts';
 
 import { SideBar } from "./layout/SideBar";
 import { Routes } from "./layout/Routes";
@@ -9,6 +9,7 @@ import { Routes } from "./layout/Routes";
 import { Borders, Colors, Spacings } from "@dynatrace/strato-design-tokens";
 
 import { DetailView } from "./layout/DetailView";
+import { Container } from "@dynatrace/strato-components";
 
 const Placeholder = () => (
   <div
@@ -41,13 +42,13 @@ export const App = () => {
             />
           </TitleBar.Prefix>
           <TitleBar.Title>Main</TitleBar.Title>
-          <TitleBar.Subtitle>
-            <Routes />
-          </TitleBar.Subtitle>
+          
           {/* <TitleBar.Action>
             
           </TitleBar.Action> */}
         </TitleBar>
+        <br></br>
+          <Routes />
       </Page.Main>
       <DetailView isDismissed={isDetailViewDismissed}/>
     </Page>

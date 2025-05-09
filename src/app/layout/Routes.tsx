@@ -3,6 +3,8 @@
 import React, { lazy, Suspense } from 'react';
 import { Route, Routes as ReactRoutes } from 'react-router-dom';
 import { Home } from '../pages/Home';
+import { useParams } from 'react-router-dom';
+import { exec } from 'child_process';
 
 // 🔧 Mapeador de páginas dinâmicas:
 const dynamicImport = (prefix: string, page: string) => {
@@ -25,7 +27,6 @@ const toPascalCase = (slug: string) =>
 
 // 🎯 Componente para rota dinâmica:
 const DynamicExample = ({ example, prefix }: { example: string, prefix : string }) => {
-  console.log(">>>>>>>>>>",toPascalCase(example))
   const Component = dynamicImport(prefix,toPascalCase(example));
   return (
     <Suspense fallback={<div>Carregando exemplo...</div>}>
@@ -56,9 +57,6 @@ export const Routes = () => {
   );
 };
 
-// wrapper que usa useParams para capturar o slug
-import { useParams } from 'react-router-dom';
-import { exec } from 'child_process';
 const RouteWrapper = (param : {prefix : string}) => {
   const { example } = useParams<{ example: string }>();
   if (!example) return <div>Exemplo não informado</div>;

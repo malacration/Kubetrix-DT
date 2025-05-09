@@ -7,6 +7,11 @@ import {
   SelectV2,
   TextInput,
 } from '@dynatrace/strato-components-preview/forms';
+import { ClusterSelection } from './filters/ClusterSelect';
+import { NameSpaceSelection } from './filters/NameSpacesSelect';
+import { WorkloadsSelection } from './filters/WorkloadsSelect';
+import { TimeFrame } from './timeframe/Timeframe';
+import { getDefaultTimeframe } from './timeframe/DefaultTimeframe';
 
 const countries = ['Austria', 'Estonia', 'Poland', 'Spain'];
 const cities = [
@@ -20,73 +25,54 @@ const cities = [
   'Gdansk',
   'Barcelona',
 ];
+export interface Teste{
+  teste
+}
 
-export const MultipleFilters = () => {
-  const defaultFilterState = {
-    text: { value: 'Dynatrace' },
-    country: { value: 'Austria' },
-    city: { value: ['Linz'] },
-    timeframe: {
-      value: {
-        from: {
-          absoluteDate: subDays(new Date(), 1827).toISOString(),
-          value: 'now()-1827d',
-          type: 'expression',
-        },
-        to: {
-          absoluteDate: new Date().toISOString(),
-          value: 'now()',
-          type: 'expression',
-        },
-      } as TimeframeV2,
-    },
-  };
-  const [timeframe, setTimeframe] = useState<TimeframeV2 | null>(
-    defaultFilterState.timeframe.value
-  );
+export const Filters = () => {
+
+    const [clusterSelecionado, setClusterSelecionado] = useState("all");
+    const [namespaceSelecionado, setNamespaceSelecionado] = useState("all");
+    const [workloadSelecionado, setWorkloadSelecionado] = useState("all");
+    const [timeframe, setTimeframe] = useState<TimeframeV2>(getDefaultTimeframe);
 
   return (
     <FilterBar
-      onFilterChange={() => {
-        /* Insert filtering logic here */
+      onFilterChange={(props) => {
+        if(typeof props.cluster.value === 'string')
+          setClusterSelecionado(props.cluster.value)
+
+        if(typeof props.namespace.value === 'string')
+          setNamespaceSelecionado(props.namespace.value)
+
+        if(typeof props.workload.value === 'string')
+          setWorkloadSelecionado(props.workload.value)
+
+        setTimeframe(props.timeframe.value)
+
       }}
     >
-      <FilterBar.Item name="text" label="Full name">
-        <TextInput defaultValue={defaultFilterState.text.value} />
+      <FilterBar.Item name="cluster" label="Cluster">
+        <ClusterSelection timeFrame={timeframe}/>
       </FilterBar.Item>
-      <FilterBar.Item name="country" label="Country">
-        <SelectV2
-          defaultValue={defaultFilterState.country.value}
-          name="country"
-          id="country-select"
-          clearable
-        >
-          <SelectV2.Content>
-            {countries.map((country) => (
-              <SelectV2.Option key={country} value={country}>
-                {country}
-              </SelectV2.Option>
-            ))}
-          </SelectV2.Content>
-        </SelectV2>
+      <FilterBar.Item name="namespace" label="NameSpace">
+        <NameSpaceSelection timeFrame={timeframe} k8sName={clusterSelecionado}/>
       </FilterBar.Item>
-      <FilterBar.Item name="city" label="City">
-        <SelectV2
-          defaultValue={defaultFilterState.city.value}
-          name="city"
-          id="city-select"
-          multiple
-          clearable
-        >
-          <SelectV2.Content>
-            {cities.map((city) => (
-              <SelectV2.Option key={city} value={city}>
-                {city}
-              </SelectV2.Option>
-            ))}
-          </SelectV2.Content>
-        </SelectV2>
+      <FilterBar.Item name="workload" label="Workloads">
+        <WorkloadsSelection 
+          timeFrame={timeframe}
+          nameSpace={namespaceSelecionado}
+          k8sName={clusterSelecionado}
+        />
+      </FilterBar.Item>
+      <FilterBar.Item name="timeframe" label="">
+        <TimeFrame />
       </FilterBar.Item>
     </FilterBar>
   );
 };
+
+
+export class Filter{
+  label
+}

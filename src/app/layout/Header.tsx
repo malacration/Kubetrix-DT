@@ -4,7 +4,7 @@ import { AppHeader, HelpMenu } from "@dynatrace/strato-components-preview/layout
 import { PlusIcon, SettingIcon } from "@dynatrace/strato-icons";
 import { Button } from '@dynatrace/strato-components/buttons';
 
-import { TimeFrame } from '../components/Timeframe'
+import { TimeFrame } from '../components/timeframe/Timeframe'
 
 type Props = {
   onToggleSetting: () => void;
@@ -40,7 +40,7 @@ export const Header = ({ onToggleSetting }: Props) => {
 
       <AppHeader.ActionItems>        
         <AppHeader.ActionItemGroup>
-          <TimeFrame/>
+          
         </AppHeader.ActionItemGroup>
         <AppHeader.ActionItemGroup>
           <AppHeader.ActionButton>

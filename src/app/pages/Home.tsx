@@ -14,7 +14,7 @@ export const Home = () => {
   return (
     <Flex flexDirection="column" alignItems="center" padding={32}>
       <img
-        src="./assets/Dynatrace_Logo.svg"
+        src="./assets/kubetrix_transparent_faces.png"
         alt="Dynatrace Logo"
         width={150}
         height={150}
