@@ -51,4 +51,5 @@ export const WorkloadsSelection = forwardRef<HTMLDivElement, WorkloadSelectionPr
 
 })
 
+// @ts-expect-error pede displayname e depois nao reconhece
 WorkloadsSelection.displayName = 'WorkloadsSelection';

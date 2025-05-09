@@ -26,6 +26,7 @@ export async function executeDqlQuery(dql: string, timeFrame?: TimeframeV2, maxR
     let retries = 0;
     while (retries < maxRetries) {
       const pollResult = await queryExecutionClient.queryPoll({
+        // @ts-expect-error o framework garante a tipagem
         requestToken: execution.requestToken,
       });
 

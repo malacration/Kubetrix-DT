@@ -3,31 +3,11 @@ import React, { useState } from 'react';
 
 import type { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
 import { FilterBar } from '@dynatrace/strato-components-preview/filters';
-import {
-  SelectV2,
-  TextInput,
-} from '@dynatrace/strato-components-preview/forms';
 import { ClusterSelection } from './filters/ClusterSelect';
 import { NameSpaceSelection } from './filters/NameSpacesSelect';
 import { WorkloadsSelection } from './filters/WorkloadsSelect';
 import { TimeFrame } from './timeframe/Timeframe';
 import { getDefaultTimeframe } from './timeframe/DefaultTimeframe';
-
-const countries = ['Austria', 'Estonia', 'Poland', 'Spain'];
-const cities = [
-  'Linz',
-  'Graz',
-  'Hagenberg',
-  'Innsbruck',
-  'Klagenfurt',
-  'Vienna',
-  'Tallinn',
-  'Gdansk',
-  'Barcelona',
-];
-export interface Teste{
-  teste
-}
 
 export const Filters = () => {
 
@@ -48,6 +28,7 @@ export const Filters = () => {
         if(typeof props.workload.value === 'string')
           setWorkloadSelecionado(props.workload.value)
 
+        // @ts-expect-error o framework garante a tipagem
         setTimeframe(props.timeframe.value)
 
       }}

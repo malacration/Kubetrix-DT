@@ -31,6 +31,7 @@ const TimeFrame  = React.forwardRef<TimeRangePickerRef<HTMLDivElement>, TimeFram
   return <TimeframeSelector ref={ref} value={value} onChange={handleChange} />;
 })
 
+// @ts-expect-error pede displayname e depois nao reconhece
 TimeFrame.displayName = "TimeFrame"
 
 

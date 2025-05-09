@@ -52,4 +52,5 @@ export const NameSpaceSelection = forwardRef<HTMLDivElement, NameSpaceSelectionP
 
 })
 
+// @ts-expect-error pede displayname e depois nao reconhece
 NameSpaceSelection.displayName = 'NameSpaceSelection';

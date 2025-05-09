@@ -60,6 +60,7 @@ const ClusterSelection = React.forwardRef<HTMLDivElement, ClusterSelectionProps>
   }
 );
 
+// @ts-expect-error pede displayname e depois nao reconhece
 // Nome do componente para debug
 ClusterSelection.displayName = 'ClusterSelection';
 
