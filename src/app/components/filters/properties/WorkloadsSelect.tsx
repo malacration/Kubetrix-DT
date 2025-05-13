@@ -1,17 +1,18 @@
 import React, { ForwardedRef, forwardRef, useEffect, useState } from 'react';
-import { Option, SelectComponent } from '../form/Select';
-import { getNamesSpaces } from 'src/app/services/k8s/NameSpaceService';
+import { Option, SelectComponent } from '../../form/Select';
+import { getWorkloads } from 'src/app/services/k8s/WorkloadService';
 import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
 
 
-interface NameSpaceSelectionProps {
+interface WorkloadSelectionProps {
   onChange?: (value: string | string[] | undefined) => void;
-  timeFrame? : TimeframeV2
-  k8sName : string
+  timeFrame?: TimeframeV2
+  nameSpace : string;
+  k8sName : string;
 }
 
-export const NameSpaceSelection = forwardRef<HTMLDivElement, NameSpaceSelectionProps>(
-  ({ k8sName, onChange, timeFrame }, ref: ForwardedRef<HTMLDivElement>) => {
+export const WorkloadsSelection = forwardRef<HTMLDivElement, WorkloadSelectionProps>( 
+  ({ nameSpace, k8sName, onChange, timeFrame },ref: ForwardedRef<HTMLDivElement> ) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [option, setOption] = useState<Array<Option>>([new Option("All","all")]);
@@ -20,14 +21,11 @@ export const NameSpaceSelection = forwardRef<HTMLDivElement, NameSpaceSelectionP
       setLoading(true)
       const fetchData = async () => {
         try {
-          const response = await getNamesSpaces(k8sName,timeFrame);
-          const clusterOptions = response.data.records.map((item: any) => {
-              const label = item["name"];
-              const value = item["name"];
-              return new Option(label, value);
-            });
-          setOption(clusterOptions);
-
+          const response = await getWorkloads(k8sName,nameSpace,timeFrame);
+          const options = response.map((item: string) => {
+              return new Option(item, item);
+          });
+          setOption([new Option('All', 'all'), ...options]);
         } catch (err: any) {
           console.error("Erro ao buscar métricas:", err);
           setError(err.message || "Erro desconhecido");
@@ -37,11 +35,11 @@ export const NameSpaceSelection = forwardRef<HTMLDivElement, NameSpaceSelectionP
       };
     
         fetchData();
-      }, [k8sName,timeFrame]);
+      }, [k8sName,nameSpace,timeFrame]);
 
     return( 
         <div ref={ref}>
-            <SelectComponent 
+            <SelectComponent
                 defaultValue="all"
                 options={option}
                 loading={loading}
@@ -53,4 +51,4 @@ export const NameSpaceSelection = forwardRef<HTMLDivElement, NameSpaceSelectionP
 })
 
 // @ts-expect-error pede displayname e depois nao reconhece
-NameSpaceSelection.displayName = 'NameSpaceSelection';
+WorkloadsSelection.displayName = 'WorkloadsSelection';

@@ -1,43 +1,66 @@
 import React, {useEffect, useState} from 'react';
-
-
 import { SelectV2 } from '@dynatrace/strato-components-preview/forms';
 
+
+/** utilitário para ver se um value está na lista de opções */
+const optionExists = (value: string, options: Option[]) =>
+  options.some((o) => o.value === value);
+
 export const SelectComponent = (select: Select) => {
+  const {
+    options,
+    defaultValue,
+    multiple = false,
+    clearable = true,
+    placeholder,
+    filter = true,
+    loading,
+    onChange,
+  } = select;
 
-  const [selected, setSelected] = useState<string | string[] | null>(select.defaultValue);
+  const [selected, setSelected] = useState<string | string[] | null>(defaultValue);
 
+  /* Atualiza apenas se o valor vigente desaparecer da nova lista de opções */
   useEffect(() => {
-    setSelected(null);
-  }, [select.options]);
+    if (selected == null) return; // nada selecionado → nada a fazer
+
+    const allExist = Array.isArray(selected)
+      ? selected.every((v) => optionExists(v, options))
+      : optionExists(selected, options);
+
+    if (!allExist) {
+      handleChange(defaultValue ?? null);
+    }
+    
+    maxLabel = Math.max(8,...options.flatMap(o => o.label.length));
+    overlayWidth = `${Math.min(maxLabel * 8, 400)}px`;
+
+  }, [options, selected, defaultValue]);
 
   const handleChange = (value: string | string[] | null) => {
     setSelected(value);
-    select?.onChange(value);
+    onChange?.(value);
   };
+
+  let maxLabel = Math.max(8,...options.flatMap(o => o.label.length));
+  let overlayWidth = `${Math.min(maxLabel * 8, 400)}px`; // limite de 400 px
 
   return (
     <SelectV2
+      value={selected}
       onChange={handleChange}
-      clearable={select.clearable ?? true} 
-      multiple={select.multiple ?? false} 
-      value={selected as any}
-      >
-
-      {select.filter ?? true ? <SelectV2.Filter /> : null}
-      {select.placeholder ? <SelectV2.Trigger placeholder={select.placeholder} /> : <></>}
-      
-      <SelectV2.Content 
-        loading={select.loading}
-        showSelectedOptionsFirst={true}
-        >
-        {select.options.map((el) => (
-            <SelectV2.Option value={el.value} key={el.value}>
-              {el.label}
-            </SelectV2.Option>
-          ))}
+      multiple={multiple}
+      clearable={clearable}
+    >
+      {filter && <SelectV2.Filter />}
+      <SelectV2.Trigger style={{ minWidth: 150 }} placeholder={placeholder || 'Selecione...'} />
+      <SelectV2.Content style={{ minWidth: 150 }} width={overlayWidth} loading={loading} showSelectedOptionsFirst>
+        {options.map((o) => (
+          <SelectV2.Option key={o.value} value={o.value}>
+            {o.label}
+          </SelectV2.Option>
+        ))}
       </SelectV2.Content>
-
     </SelectV2>
   );
 };

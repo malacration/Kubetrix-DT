@@ -5,7 +5,7 @@ import React, {
   ForwardedRef,
 } from 'react';
 
-import { Option, SelectComponent } from '../form/Select';
+import { Option, SelectComponent } from '../../form/Select';
 import { getClusters } from 'src/app/services/k8s/kubernetsService';
 import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
 
@@ -28,8 +28,8 @@ const ClusterSelection = React.forwardRef<HTMLDivElement, ClusterSelectionProps>
     useEffect(() => {
       const fetchData = async () => {
         try {
-          const response = await getClusters(timeFrame);
-          const clusterOptions = response.map((item: any) => {
+            const response = await getClusters(timeFrame);
+            const clusterOptions = response.map((item: any) => {
             const label = item['k8s.cluster.name'];
             const value = item['k8s.cluster.name'];
             return new Option(label, value);
