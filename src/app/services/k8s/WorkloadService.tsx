@@ -46,6 +46,38 @@ export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeF
   return clientClassic(metricSelector,timeFrame)
 }
 
+export function  kubernetesWorkload(metricName : string,
+    $kubernetsCluster?, 
+    $Namespace?, 
+    $workload?, 
+    timeFrame? : TimeframeV2,
+    extra? : string) : Promise<MetricResult>{
+
+  let clusterFilter = 'eq("k8s.cluster.name","'+$kubernetsCluster+'")'
+  if(!$kubernetsCluster || $kubernetsCluster == "all")
+    clusterFilter = ''
+  
+  let namespaceFilter = 'eq("k8s.namespace.name","'+$Namespace+'")'
+  if(!$Namespace || $Namespace == "all")
+    namespaceFilter = ''
+
+  let workloadFilter = 'eq("k8s.workload.name","'+$workload+'")'
+  if(!$workload || $workload == "all")
+    workloadFilter = ''
+  
+  const allFilters = [clusterFilter, namespaceFilter, workloadFilter].filter(f => f !== '').join(',');
+
+  const metric = `builtin:kubernetes.workload.${metricName}`
+  let filter = ':filter(and('+allFilters+'))';
+  if(allFilters == "")
+    filter = ""
+  const split  = ':splitBy()'
+  const metricSelector = metric+filter+split+ (extra ? ":"+extra : "");
+  
+  return clientClassic(metricSelector,timeFrame)
+}
+
+
 
 function transformarJson(input) {
   const records = [];

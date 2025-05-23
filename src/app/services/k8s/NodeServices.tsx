@@ -19,7 +19,7 @@ export async function NodesCpuOverload($kubernetsCluster, $Namespace, $workload,
     clusterFilter = ''
 
   let workloadFilter = ',in("dt.entity.kubernetes_node", entitySelector("type(~"KUBERNETES_NODE~"),toRelationship.runsOn(type(~"CLOUD_APPLICATION_INSTANCE~"),fromRelationships.isInstanceOf(type(~"CLOUD_APPLICATION~"),entityName.equals(~'+$workload+'~)))"))'
-  if($workload || $workload == "all")
+  if(!$workload || $workload == "all")
     workloadFilter = ''
 
   

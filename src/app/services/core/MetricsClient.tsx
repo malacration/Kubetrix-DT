@@ -20,9 +20,6 @@ export async function executeDqlQuery(dql: string, timeFrame?: TimeframeV2, maxR
       body : query
     });
 
-    //TODO debug
-    console.log("dql Query",query);
-
     let retries = 0;
     while (retries < maxRetries) {
       const pollResult = await queryExecutionClient.queryPoll({

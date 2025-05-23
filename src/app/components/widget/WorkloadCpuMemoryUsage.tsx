@@ -2,14 +2,15 @@ import { Timeseries, TimeseriesChart } from '@dynatrace/strato-components-previe
 import { FilterItemValues } from '@dynatrace/strato-components-preview/filters';
 import React, { useEffect, useState } from 'react';
 import { MetricResult } from 'src/app/services/core/MetricsClientClassic';
-import { responseTime } from 'src/app/services/k8s/WorkloadService';
+import { kubernetesWorkload, responseTime } from 'src/app/services/k8s/WorkloadService';
 import { convertQueryResultToTimeseries, convertToTimeseries } from '@dynatrace/strato-components-preview/conversion-utilities';
+import { ChartProps } from '../filters/BarChartProps';
+import { TitleBar } from '@dynatrace/strato-components-preview/layouts';
+import { AppCard } from '@dynatrace/strato-components-preview/navigation';
 
-interface BarChartProps {
-  filters?: FilterItemValues; // será injetado pelo Dashboard
-}
 
-export function WorkloadResponseTime({ filters }: BarChartProps) {
+
+function WorkloadCpuMemoryUsage({ filters, refreshToken}: ChartProps) {
   const [metric, setMetric] = useState<MetricResult | null>(null);
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,7 +29,7 @@ export function WorkloadResponseTime({ filters }: BarChartProps) {
           timeframe: filters.timeframe?.value,
         };
 
-        const result = await responseTime(cluster, namespace, workload, timeframe);
+        const result = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum():toUnit(MilliCores,Cores)");
         setMetric(result);
         const ts   = await result.metricDataToTimeseries(workload);
         setSeries(ts);
@@ -40,7 +41,7 @@ export function WorkloadResponseTime({ filters }: BarChartProps) {
     };
 
     load();
-  }, [filters]);
+  }, [filters,refreshToken]);
 
   return (
     <TimeseriesChart
@@ -49,3 +50,8 @@ export function WorkloadResponseTime({ filters }: BarChartProps) {
     />
   );
 }
+
+
+(WorkloadCpuMemoryUsage as any).dashboardWidget = true;
+
+export { WorkloadCpuMemoryUsage };

@@ -8,11 +8,8 @@ import { NameSpaceSelection } from './properties/NameSpacesSelect';
 import { WorkloadsSelection } from './properties/WorkloadsSelect';
 import { TimeFrame } from '../timeframe/Timeframe';
 import { getDefaultTimeframe } from '../timeframe/DefaultTimeframe';
-
-
-interface FilterBarProps {
-  onFiltersChange?: (f: FilterItemValues) => void;
-}
+import { FilterBarProps } from '../dashboard/DashBoard';
+import { SelectComponent } from '../form/Select';
 
 function mergeFilterValues(
   prev: FilterItemValues,
@@ -29,7 +26,7 @@ function mergeFilterValues(
 }
 
 
-export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
+export const FiltersK8s = ({ onFiltersChange, refreshIntervalMs, setRefreshIntervalMs }: FilterBarProps) => {
 
     const [clusterSelecionado, setClusterSelecionado] = useState("all");
     const [namespaceSelecionado, setNamespaceSelecionado] = useState("all");
@@ -62,6 +59,9 @@ export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
         if(typeof props.workload.value === 'string')
           setWorkloadSelecionado(props.workload.value)
 
+        if(new Number(props.time.value) && setRefreshIntervalMs)
+          setRefreshIntervalMs(props.time.value)
+
         // @ts-expect-error o framework garante a tipagem
         setTimeframe(props.timeframe.value)
       }}
@@ -83,6 +83,17 @@ export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
       </FilterBar.Item>
       <FilterBar.Item name="timeframe" label="">
         <TimeFrame />
+      </FilterBar.Item>
+      <FilterBar.Item name="time" label="Auto Refresh">
+        <SelectComponent
+          defaultValue="60000"
+          options={[
+            new Option("5m","300000"),
+            new Option("1m","60000"),
+            new Option("30s","30000")
+          ]}
+          clearable={false}
+        />
       </FilterBar.Item>
     </FilterBar>
   );
