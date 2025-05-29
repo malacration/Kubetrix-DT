@@ -18,7 +18,7 @@ export async function getWorkloads(kubernetsCluster = 'all', Namespace = 'all',t
 }
 
 
-export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeFrame? : TimeframeV2) : Promise<MetricResult>{
+export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeFrame? : TimeframeV2, isTimeshift = false) : Promise<MetricResult>{
   
   let clusterFilter = 'in("dt.entity.service", entitySelector("type(~"SERVICE~"),toRelationship.isClusterOfService(type(~"KUBERNETES_CLUSTER~"),entityName.equals(~"'+$kubernetsCluster+'~"))"))'
   if(!$kubernetsCluster || $kubernetsCluster == "all")
@@ -38,10 +38,14 @@ export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeF
   let filter = ':filter(and('+allFilters+'))';
   if(allFilters == "")
     filter = ""
+  
   const split  = ':splitBy()'
   
-  //:filter(and(in("dt.entity.service", entitySelector("type(~"SERVICE~"),toRelationship.isClusterOfService(type(~"KUBERNETES_CLUSTER~"),entityName.equals(~"openshift~"))"))))
-  const metricSelector = metric+filter+split+":avg:toUnit(MicroSecond,Second)";
+  let timeshift = ""
+  if(isTimeshift)
+    timeshift = ":timeshift(-7d)"
+
+  const metricSelector = metric+filter+split+":avg:toUnit(MicroSecond,Second)"+timeshift;
 
   return clientClassic(metricSelector,timeFrame)
 }
@@ -51,7 +55,8 @@ export function  kubernetesWorkload(metricName : string,
     $Namespace?, 
     $workload?, 
     timeFrame? : TimeframeV2,
-    extra? : string) : Promise<MetricResult>{
+    extra? : string,
+    isTimeshift = false) : Promise<MetricResult>{
 
   let clusterFilter = 'eq("k8s.cluster.name","'+$kubernetsCluster+'")'
   if(!$kubernetsCluster || $kubernetsCluster == "all")
@@ -72,12 +77,54 @@ export function  kubernetesWorkload(metricName : string,
   if(allFilters == "")
     filter = ""
   const split  = ':splitBy()'
-  const metricSelector = metric+filter+split+ (extra ? ":"+extra : "");
+  
+  let timeshift = ""
+  if(isTimeshift)
+    timeshift = ":timeshift(-7d)"
+
+  const metricSelector = metric+filter+split+ (extra ? ":"+extra : "")+timeshift;
   
   return clientClassic(metricSelector,timeFrame)
 }
 
+export function serviceWorkload(metricName : string,
+  $kubernetsCluster?, 
+  $Namespace?, 
+  $workload?, 
+  timeFrame? : TimeframeV2,
+  extra? : string,
+  isTimeshift = false) : Promise<MetricResult>{
 
+  let clusterFilter = `in("dt.entity.service", entitySelector("type(~"SERVICE~"),toRelationship.isClusterOfService(type(~"KUBERNETES_CLUSTER~"),entityName.equals(~"${$kubernetsCluster}~"))"))`
+  if(!$kubernetsCluster || $kubernetsCluster == "all")
+    clusterFilter = ''
+
+  let namespaceFilter = `in("dt.entity.service", entitySelector("type(~"SERVICE~"),toRelationship.isNamespaceOfService(type(~"CLOUD_APPLICATION_NAMESPACE~"),entityName.equals(~"${$Namespace}~"))"))`
+  if(!$Namespace || $Namespace == "all")
+    namespaceFilter = ''
+
+  
+  let workloadFilter = `in("dt.entity.service", entitySelector("type(~"SERVICE~"),fromRelationship.isServiceOf(type(~"CLOUD_APPLICATION~"),entityName.equals(~"${$workload}~"))"))`
+  if(!$workload || $workload == "all")
+    workloadFilter = ''
+
+  const allFilters = [clusterFilter, namespaceFilter, workloadFilter].filter(f => f !== '').join(',');
+  let filter = ':filter(and('+allFilters+'))';
+  if(allFilters == "")
+    filter = ""
+  
+  const metric = `builtin:service.${metricName}`
+  const split  = ':splitBy()'
+
+  let timeshift = ""
+  if(isTimeshift)
+    timeshift = ":timeshift(-7d)"
+
+  const metricSelector = metric+filter+split+ (extra ? ":"+extra : "")+timeshift;
+
+  
+  return clientClassic(metricSelector,timeFrame)
+}
 
 function transformarJson(input) {
   const records = [];

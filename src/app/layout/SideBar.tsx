@@ -4,12 +4,12 @@ import {
   Page,
   TitleBar,
 } from '@dynatrace/strato-components-preview/layouts';
-import { Button } from '@dynatrace/strato-components';
+import { Button } from '@dynatrace/strato-components/buttons';
 import { Link } from 'react-router-dom';
 
 
 const exemplos = [
-  { label: 'Exemplo', path: '/dashboards/Exemplo' },
+  { label: 'Generic', path: '/dashboards/Generic' },
 ];
 
 export const SideBar = ({ isDismissed }: { isDismissed: boolean }) => {

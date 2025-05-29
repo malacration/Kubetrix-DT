@@ -1,7 +1,7 @@
-import { Timeseries, TimeseriesAnnotations, type TimeseriesAnnotationsMarkerProps, TimeseriesChart } from '@dynatrace/strato-components-preview/charts';
+import { ChartInteractions, Timeseries, TimeseriesAnnotations, type TimeseriesAnnotationsMarkerProps, TimeseriesChart } from '@dynatrace/strato-components-preview/charts';
 import React, { useEffect, useState } from 'react';
 import { MetricResult } from 'src/app/services/core/MetricsClientClassic';
-import { responseTime } from 'src/app/services/k8s/WorkloadService';
+import { kubernetesWorkload, responseTime, serviceWorkload } from 'src/app/services/k8s/WorkloadService';
 import { ChartProps } from '../filters/BarChartProps';
 import { shiftTimeframeBack } from 'src/app/model/ShiftTimeframeBack';
 import { QueryResult } from '@dynatrace-sdk/client-query';
@@ -11,7 +11,7 @@ import { ThumbsDownIcon, ViewIcon } from '@dynatrace/strato-icons';
 
 
 
-function WorkloadResponseTime({ filters, refreshToken, title = "windson" }: ChartProps) {
+function WorkloadThroughput({ filters, refreshToken }: ChartProps) {
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -28,16 +28,12 @@ function WorkloadResponseTime({ filters, refreshToken, title = "windson" }: Char
     const load = async () => {
       setLoading(true);
       try {
-        const result = await responseTime(cluster, namespace, workload, timeframe);
-        const sevenDaysAgo = await responseTime(cluster, namespace, workload,timeframe,true);
+        const throughputMetric = await serviceWorkload("requestCount.server",cluster, namespace, workload, timeframe);
+        const throughputMetricSevenDaysAgo = await serviceWorkload("requestCount.server",cluster, namespace, workload,timeframe,undefined,true);
 
-        const timeSeries  = await result.metricDataToTimeseries(workload??"All");
-        const timeSeriesSevenDaysAgo   = await sevenDaysAgo.metricDataToTimeseries("7 Days Ago");
+        const timeSeries  = await throughputMetric.metricDataToTimeseries("Throughput");
+        const timeSeriesSevenDaysAgo   = await throughputMetricSevenDaysAgo.metricDataToTimeseries("7 Days Ago");
 
-        // TODO tentar usar a propria api do dynatrace https://developer.dynatrace.com/develop/visualize-data-in-apps/visualize-events/
-        // const buildTimeseries = (...queryResults: (QueryResult | undefined)[]) =>
-        //   queryResults.flatMap((res) => (res ? convertQueryResultToTimeseries(res) : []));
-        
         setSeries([...timeSeries, ...timeSeriesSevenDaysAgo]);
         
       } catch (err) {
@@ -51,16 +47,20 @@ function WorkloadResponseTime({ filters, refreshToken, title = "windson" }: Char
   }, [filters,refreshToken]);
 
   return (
-    <TimeseriesChart
+    <TimeseriesChart curve="smooth"
       loading={loading}
       data={series}
+      
     >
       <TimeseriesChart.Legend position="bottom" />
+      <ChartInteractions>
+          <ChartInteractions.Zoom />
+      </ChartInteractions>
     </TimeseriesChart>
   );
 }
 
-(WorkloadResponseTime as any).dashboardWidget = true;
+(WorkloadThroughput as any).dashboardWidget = true;
 
-export { WorkloadResponseTime };
+export { WorkloadThroughput };
 

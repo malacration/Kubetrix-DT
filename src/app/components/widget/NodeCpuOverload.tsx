@@ -38,7 +38,9 @@ function NodeCpuOverload({ filters, refreshToken }: ChartProps, showLabels = tru
             showLabels={showLabels}
             colorScheme={percentOverloadColorScheme}
             unit={"percentage"}
-        />
+        >
+          <HoneycombChart.Legend position="bottom"/>
+        </HoneycombChart>
     </div>
   );
 }

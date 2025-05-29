@@ -10,9 +10,9 @@ import { AppCard } from '@dynatrace/strato-components-preview/navigation';
 
 
 
-function WorkloadCpuMemoryUsage({ filters, refreshToken}: ChartProps) {
-  const [metric, setMetric] = useState<MetricResult | null>(null);
+function WorkloadCpuUsage({ filters, refreshToken}: ChartProps) {
   const [series, setSeries] = useState<Timeseries[]>([]);
+  const [throttled, setThrottled] = useState<Timeseries>();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -30,9 +30,17 @@ function WorkloadCpuMemoryUsage({ filters, refreshToken}: ChartProps) {
         };
 
         const result = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum():toUnit(MilliCores,Cores)");
-        setMetric(result);
-        const ts   = await result.metricDataToTimeseries(workload);
-        setSeries(ts);
+        const sevenDaysAgo = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum():toUnit(MilliCores,Cores)",true);
+        
+        const throttled = await kubernetesWorkload("cpu_throttled",cluster, namespace, workload, timeframe, "sum():toUnit(MilliCores,Cores)");
+
+        const ts   = await result.metricDataToTimeseries(workload??"All");
+        const tsAgo   = await sevenDaysAgo.metricDataToTimeseries("7 Days Ago");
+        const tsThrottled   = await throttled.metricDataToTimeseries("Throttled");
+
+        console.log(tsThrottled)
+        setSeries([...ts,...tsAgo,]);
+        setThrottled(tsThrottled[0]);
       } catch (err) {
         console.error('Erro ao buscar métricas', err);
       } finally {
@@ -47,11 +55,15 @@ function WorkloadCpuMemoryUsage({ filters, refreshToken}: ChartProps) {
     <TimeseriesChart
       loading={loading}
       data={series}
-    />
+      
+    >
+      {throttled ? <TimeseriesChart.Bar data={throttled}  /> : <></>}
+      <TimeseriesChart.Legend position="bottom" />
+      </TimeseriesChart>
   );
 }
 
 
-(WorkloadCpuMemoryUsage as any).dashboardWidget = true;
+(WorkloadCpuUsage as any).dashboardWidget = true;
 
-export { WorkloadCpuMemoryUsage };
+export { WorkloadCpuUsage };

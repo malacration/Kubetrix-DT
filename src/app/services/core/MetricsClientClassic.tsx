@@ -112,7 +112,8 @@ export class MetricResult {
   }
   
   getHoneycomb(key: string): HoneycombTileNumericData[] {
-    const result: HoneycombTileNumericData[] = [];  
+    const accumulator: Record<string, number> = {};
+  
     for (const data of this.response.result.flatMap(it => it.data)) {
       const { dimensionMap, values } = data;
       const name = dimensionMap[key];
@@ -122,13 +123,19 @@ export class MetricResult {
         continue;
       }
   
-      values.forEach((value) => {
-        result.push({ name, value });
-      });
+      for (const v of values) {
+        // ⇢ pula se null ou undefined
+        if (v == null) continue;
+  
+        // ⇢ pula se não for número ou for NaN
+        if (typeof v !== 'number' || Number.isNaN(v)) continue;
+  
+        accumulator[name] = (accumulator[name] ?? 0) + v;
+      }
     }
   
-    return result;
-  }
+    return Object.entries(accumulator).map(([name, value]) => ({ name, value }));
+  }  
 }
 
 
