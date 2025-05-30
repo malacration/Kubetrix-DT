@@ -10,6 +10,7 @@ import { WorkloadMemoryUsage } from 'src/app/components/widget/WorkloadMemoryUsa
 import { WorkloadThroughput } from 'src/app/components/widget/WorkloadThroughput';
 import { OutOfMemory } from 'src/app/components/widget/OutOfMemory';
 import { SharedChartInteractions } from '@dynatrace/strato-components-preview/charts';
+import { Problems } from 'src/app/components/widget/Problems';
 
 
 
@@ -44,10 +45,14 @@ const Dashboards = () => {
                         <OutOfMemory title="Out Of Memory"></OutOfMemory>
                     </Flex>
                 </Flex>
+                <Problems title='Problems'></Problems>
                 <div>
-                    <li>Throughput</li>
+                    <li>Finalizar problems apos resolução do chamado</li>
                     <li>Data Base relacionados e problemas possiveis</li>
-                    <li>Uso de memoria e cpu</li>
+                    <li>Adicionar dash com memory by hosting</li>
+                    <li>Colocar a memoria disponivel para o workload selecionado</li>
+                    <li>colocar o OOM kill como event dentro do timeserieschart</li>
+                    <li>gerar OOM restart 24h</li>
                 </div>
             </SharedChartInteractions>
         </Dashboard>

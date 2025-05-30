@@ -5,8 +5,6 @@ import { MetricResult } from 'src/app/services/core/MetricsClientClassic';
 import { kubernetesWorkload, responseTime } from 'src/app/services/k8s/WorkloadService';
 import { convertQueryResultToTimeseries, convertToTimeseries } from '@dynatrace/strato-components-preview/conversion-utilities';
 import { ChartProps } from '../filters/BarChartProps';
-import { TitleBar } from '@dynatrace/strato-components-preview/layouts';
-import { AppCard } from '@dynatrace/strato-components-preview/navigation';
 
 
 
@@ -34,11 +32,10 @@ function WorkloadCpuUsage({ filters, refreshToken}: ChartProps) {
         
         const throttled = await kubernetesWorkload("cpu_throttled",cluster, namespace, workload, timeframe, "sum():toUnit(MilliCores,Cores)");
 
-        const ts   = await result.metricDataToTimeseries(workload??"All");
+        const ts   = await result.metricDataToTimeseries(workload?? "All");
         const tsAgo   = await sevenDaysAgo.metricDataToTimeseries("7 Days Ago");
         const tsThrottled   = await throttled.metricDataToTimeseries("Throttled");
 
-        console.log(tsThrottled)
         setSeries([...ts,...tsAgo,]);
         setThrottled(tsThrottled[0]);
       } catch (err) {

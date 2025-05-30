@@ -21,6 +21,10 @@
         "comment": "default template"
       },
       {
+        "name": "storage:events:read",
+        "comment": "Allows to read events (necessário para dt.davis.problems)"
+      },
+      {
         "name": "storage:metrics:read",
         "comment": "Allows to read metrics"
       },
