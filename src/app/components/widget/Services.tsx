@@ -20,19 +20,20 @@ import { EditIcon } from '@dynatrace/strato-icons';
 import { Link } from '@dynatrace/strato-components/typography';
 import { ProblemsGetActive } from 'src/app/services/problems';
 import { getNamesSpaces } from 'src/app/services/k8s/NameSpaceService';
+import { getServices } from 'src/app/services/services';
 
 const normalizeRecord = (r: any) => ({
-  id: r['event.id'],
-  name: r['event.name'],
-  description: r['event.description'],
-  k8sPath : r['k8s.cluster.name']? r['k8s.cluster.name']+"."+r['k8s.namespace.name']+"."+r['k8s.workload.name'] : "",
-  affectedCount : r["affected_entity_ids"].length,
-  category : r["event.category"],
-  frequent : r["dt.davis.is_frequent_event"],
+  id: r['entity.name'],
+  name: r['entity.name'],
+  description: r['entity.name'],
+  k8sPath : r['entity.name'],
+  affectedCount : r["entity.name"],
+  category : r["entity.name"],
+  frequent : r["entity.name"],
   ...r,                 // mantém o resto, se precisar
 })
 
-function Problems({ filters, refreshToken}: ChartProps) {
+function Services({ filters, refreshToken}: ChartProps) {
   
   const [problems, setProblems] = useState<[]>([]);
   const [loading, setLoading] = useState(false);
@@ -82,7 +83,7 @@ function Problems({ filters, refreshToken}: ChartProps) {
         timeframe: filters.timeframe?.value,
       };
       
-      ProblemsGetActive(cluster,namespace,workload,timeframe).then(it => {
+      getServices(cluster,namespace,workload,timeframe).then(it => {
         console.log(it)
         if(it?.data?.records)
           setProblems(it?.data.records.map(it => normalizeRecord(it)))
@@ -116,6 +117,6 @@ function Problems({ filters, refreshToken}: ChartProps) {
 }
 
 
-(Problems as any).dashboardWidget = true;
+(Services as any).dashboardWidget = true;
 
-export { Problems };
+export { Services };
