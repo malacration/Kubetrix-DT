@@ -12,6 +12,7 @@ import { OutOfMemory } from 'src/app/components/widget/OutOfMemory';
 import { SharedChartInteractions } from '@dynatrace/strato-components-preview/charts';
 import { Problems } from 'src/app/components/widget/Problems';
 import { Services } from 'src/app/components/widget/Services';
+import { CallServices } from 'src/app/components/widget/CallsServices';
 
 
 
@@ -46,6 +47,7 @@ const Dashboards = () => {
                         <OutOfMemory title="Out Of Memory"></OutOfMemory>
                     </Flex>
                 </Flex>
+                <CallServices title='Called Services'></CallServices>
                 <Services title='Services'></Services>
                 <Problems title='Problems'></Problems>
                 <div>

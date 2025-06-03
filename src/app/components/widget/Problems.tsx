@@ -20,6 +20,7 @@ import { EditIcon } from '@dynatrace/strato-icons';
 import { Link } from '@dynatrace/strato-components/typography';
 import { ProblemsGetActive } from 'src/app/services/problems';
 import { getNamesSpaces } from 'src/app/services/k8s/NameSpaceService';
+import { getEnvironmentUrl } from '@dynatrace-sdk/app-environment';
 
 const normalizeRecord = (r: any) => ({
   id: r['event.id'],
@@ -48,7 +49,7 @@ function Problems({ filters, refreshToken}: ChartProps) {
           return (
             <DataTableV2.DefaultCell >
               <Link
-                href={`/ui/apps/dynatrace.classic.problems/#problems/problemdetails;gtf=-2h;gf=all;pid=${value}`}
+                href={`${getEnvironmentUrl()}/ui/apps/dynatrace.classic.problems/#problems/problemdetails;gtf=-2h;gf=all;pid=${value}`}
                 target="_blank"
               >
                 {rowData?.display_id}
@@ -83,7 +84,6 @@ function Problems({ filters, refreshToken}: ChartProps) {
       };
       
       ProblemsGetActive(cluster,namespace,workload,timeframe).then(it => {
-        console.log(it)
         if(it?.data?.records)
           setProblems(it?.data.records.map(it => normalizeRecord(it)))
         setLoading(false);

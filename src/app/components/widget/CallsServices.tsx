@@ -7,7 +7,7 @@ import {
   type DataTableV2ColumnDef,
 } from '@dynatrace/strato-components-preview/tables'
 import { Link } from '@dynatrace/strato-components/typography';
-import { getServices } from 'src/app/services/services';
+import { getCallServices } from 'src/app/services/services';
 import { getEnvironmentUrl } from '@dynatrace-sdk/app-environment';
 
 
@@ -16,7 +16,7 @@ const normalizeRecord = (r: any) => ({
   ...r,
 })
 
-function Services({ filters, refreshToken}: ChartProps) {
+function CallServices({ filters, refreshToken}: ChartProps) {
   
   const url = getEnvironmentUrl();
 
@@ -34,7 +34,7 @@ function Services({ filters, refreshToken}: ChartProps) {
           return (
             <DataTableV2.DefaultCell >
               <Link
-                href={`${getEnvironmentUrl()}/ui/apps/dynatrace.classic.services/ui/entity/${rowData?.id}`}
+                href={`${getEnvironmentUrl()}/ui/apps/dynatrace.classic.services/ui/entity/${rowData?.lookupId}`}
                 target="_blank"
               >
                 {value}
@@ -52,19 +52,15 @@ function Services({ filters, refreshToken}: ChartProps) {
   
   useEffect(() => {
     if (!filters) return;
-
     const { cluster, namespace, workload, timeframe } = {
       cluster:   filters.cluster?.value,
       namespace: filters.namespace?.value,
       workload:  filters.workload?.value,
       timeframe: filters.timeframe?.value,
     };
-    
-    
-
     if((workload && workload != "all") || (namespace && namespace != "all")){
       setLoading(true);
-      getServices(cluster,namespace,workload,timeframe).then(it => {
+      getCallServices(cluster,namespace,workload,timeframe).then(it => {
         if(it?.data?.records)
           setProblems(it?.data.records.map(it => normalizeRecord(it)))
         setLoading(false);
@@ -97,6 +93,6 @@ function Services({ filters, refreshToken}: ChartProps) {
 }
 
 
-(Services as any).dashboardWidget = true;
+(CallServices as any).dashboardWidget = true;
 
-export { Services };
+export { CallServices };
