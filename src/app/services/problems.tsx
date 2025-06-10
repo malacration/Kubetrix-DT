@@ -1,4 +1,4 @@
-import { executeDqlQuery, QueryResult } from "./core/MetricsClient";
+import { GrailDqlQuery, QueryResult } from "./core/GrailClient";
 
 
 
@@ -12,5 +12,5 @@ export function ProblemsGetActive(cluster,namespace,workload,timeframe) : Promis
         | filter "${workload}" == "all" or matchesValue(k8s.workload.name,"${workload}")
 
     `
-    return executeDqlQuery(dql,timeframe);
+    return GrailDqlQuery(dql,timeframe);
 }

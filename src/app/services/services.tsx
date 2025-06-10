@@ -1,4 +1,4 @@
-import { executeDqlQuery, QueryResult } from "./core/MetricsClient";
+import { GrailDqlQuery, QueryResult } from "./core/GrailClient";
 
 
 
@@ -26,7 +26,7 @@ export function getServices(cluster,namespace,workload,timeframe) : Promise<Quer
         ${namespaceFilter}
         ${workloadFilter}
     `
-    return executeDqlQuery(dql,timeframe);
+    return GrailDqlQuery(dql,timeframe);
 }
 
 
@@ -69,5 +69,5 @@ export function getCallServices(cluster,namespace,workload,timeframe) : Promise<
         | dedup lookupId
     `
     console.log("dql",dql)
-    return executeDqlQuery(dql,timeframe);
+    return GrailDqlQuery(dql,timeframe);
 }

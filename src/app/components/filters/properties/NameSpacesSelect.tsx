@@ -21,7 +21,7 @@ export const NameSpaceSelection = forwardRef<HTMLDivElement, NameSpaceSelectionP
       const fetchData = async () => {
         try {
           const response = await getNamesSpaces(k8sName,timeFrame);
-          const options = response.data.records.map((item: any) => {
+          const options = response.records.map((item: any) => {
               const label = item["name"];
               const value = item["name"];
               return new Option(label, value);

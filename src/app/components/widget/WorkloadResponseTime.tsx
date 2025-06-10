@@ -29,16 +29,16 @@ function WorkloadResponseTime({ filters, refreshToken, title = "windson" }: Char
       setLoading(true);
       try {
         const result = await responseTime(cluster, namespace, workload, timeframe);
-        const sevenDaysAgo = await responseTime(cluster, namespace, workload,timeframe,true);
+        const baseLine = await responseTime(cluster, namespace, workload,timeframe,true);
 
         const timeSeries  = await result.metricDataToTimeseries(workload??"All");
-        const timeSeriesSevenDaysAgo   = await sevenDaysAgo.metricDataToTimeseries("7 Days Ago");
+        const timeSeriesBaseLine   = await baseLine.metricDataToTimeseries("Base Line");
 
         // TODO tentar usar a propria api do dynatrace https://developer.dynatrace.com/develop/visualize-data-in-apps/visualize-events/
         // const buildTimeseries = (...queryResults: (QueryResult | undefined)[]) =>
         //   queryResults.flatMap((res) => (res ? convertQueryResultToTimeseries(res) : []));
         
-        setSeries([...timeSeries, ...timeSeriesSevenDaysAgo]);
+        setSeries([...timeSeries, ...timeSeriesBaseLine]);
         
       } catch (err) {
         console.error('Erro ao buscar métricas', err);
@@ -54,6 +54,9 @@ function WorkloadResponseTime({ filters, refreshToken, title = "windson" }: Char
     <TimeseriesChart
       loading={loading}
       data={series}
+      truncationMode={"start"}
+      curve="smooth"
+      
     >
       <TimeseriesChart.Legend position="bottom" />
     </TimeseriesChart>

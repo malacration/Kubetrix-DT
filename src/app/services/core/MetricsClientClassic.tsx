@@ -12,7 +12,8 @@ function shiftTime(base: Date, offsetMs: number): string {
 
 export async function clientClassic(
   metricSelector: string,
-  timeFrame? : TimeframeV2
+  timeFrame? : TimeframeV2,
+  resolution? : string,
 ): Promise<MetricResult> {
   
   const now = new Date();
@@ -22,14 +23,13 @@ export async function clientClassic(
   //TODO colocar if para debug info
   console.log(metricSelector)
 
-  const response = await metricsClient.query({
+  return metricsClient.query({
     metricSelector,
     acceptType: "application/json; charset=utf-8",
     from: fromTime.toISOString(),
     to: toTime.toISOString(),
-  });
-
-  return Object.assign(new MetricResult(response), response);
+    resolution: resolution
+  }).then(it => Object.assign(new MetricResult(it), it));
 }
 
 
@@ -102,6 +102,7 @@ export class MetricResult {
           serie.datapoints.push({
             start: new Date(ts),
             end:   new Date(ts + windowMs),
+            center: new Date(ts),
             value: ms.values[idx],
           });
         });
@@ -133,9 +134,8 @@ export class MetricResult {
         accumulator[name] = (accumulator[name] ?? 0) + v;
       }
     }
-  
     return Object.entries(accumulator).map(([name, value]) => ({ name, value }));
-  }  
+  }
 }
 
 

@@ -15,26 +15,17 @@ export const App = () => {
   const [isDetailViewDismissed, setIsDetailViewDismissed] = useState<boolean>(true);
   const [isSidebarDismissed, setIsSidebarDismissed] = useState<boolean>(false);
 
+  const toggleSidebar = () => {
+    setIsSidebarDismissed(prev => !prev);
+  };
+
   return (
     <Page>
       <Page.Header>
-        <Header onToggleSetting={() => setIsDetailViewDismissed(prev => !prev)} />
+        <Header onToggleSetting={() => setIsDetailViewDismissed(prev => !prev)} onToggleMenu={toggleSidebar} />
       </Page.Header>
-      <SideBar isDismissed={isSidebarDismissed} />
+      <SideBar isDismissed={isSidebarDismissed} onDismiss={() => setIsSidebarDismissed(true)}  />
       <Page.Main>
-        <TitleBar>
-          <TitleBar.Prefix>
-            <Page.PanelControlButton
-              onClick={() => setIsSidebarDismissed(!isSidebarDismissed)}
-            />
-          </TitleBar.Prefix>
-          <TitleBar.Title>Main</TitleBar.Title>
-          
-          {/* <TitleBar.Action>
-            
-          </TitleBar.Action> */}
-        </TitleBar>
-        <br></br>
           <Routes />
       </Page.Main>
       <DetailView isDismissed={isDetailViewDismissed}/>

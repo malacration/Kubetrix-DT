@@ -21,9 +21,9 @@ interface DashboardProps {
 }
 
 export interface FilterBarProps {
-  onFiltersChange: (f: FilterItemValues) => void;
-  refreshIntervalMs: number;
-  setRefreshIntervalMs: (ms: number) => void;
+  onFiltersChange?: (f: FilterItemValues) => void;
+  refreshIntervalMs?: number;
+  setRefreshIntervalMs?: (ms: number) => void;
 }
 
 function DashboardFilter(

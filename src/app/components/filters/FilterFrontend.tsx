@@ -10,6 +10,7 @@ import { TimeFrame } from '../timeframe/Timeframe';
 import { getDefaultTimeframe } from '../timeframe/DefaultTimeframe';
 import { FilterBarProps } from '../dashboard/DashBoard';
 import { SelectComponent } from '../form/Select';
+import { FrontendSelection } from './properties/FrontendSelect';
 
 function mergeFilterValues(
   prev: FilterItemValues,
@@ -26,38 +27,27 @@ function mergeFilterValues(
 }
 
 
-export const FiltersK8s = ({ onFiltersChange, refreshIntervalMs, setRefreshIntervalMs }: FilterBarProps) => {
+export const FilterFrontend = ({ onFiltersChange, refreshIntervalMs, setRefreshIntervalMs }: FilterBarProps) => {
 
-    const [clusterSelecionado, setClusterSelecionado] = useState("all");
-    const [namespaceSelecionado, setNamespaceSelecionado] = useState("all");
-    const [workloadSelecionado, setWorkloadSelecionado] = useState("all");
+    const [frontendSelected, setFrontendSelected] = useState<string>();
     const [timeframe, setTimeframe] = useState<TimeframeV2>(getDefaultTimeframe);
 
     const [allProps, setAllProps] = useState<FilterItemValues>({
-      cluster:   { value: 'all'},
-      namespace: { value: 'all'},
-      workload:  { value: 'all'},
       timeframe: { value: timeframe},
     });
  
 
     useEffect(() => {
       onFiltersChange?.(allProps);
-    }, [allProps,clusterSelecionado,namespaceSelecionado,timeframe]);
+    }, [frontendSelected,timeframe]);
 
   return (
     <FilterBar
       onFilterChange={(props) => {
         setAllProps((prev) => mergeFilterValues(prev, props));
 
-        if(typeof props.cluster.value === 'string')
-          setClusterSelecionado(props.cluster.value)
-
-        if(typeof props.namespace.value === 'string')
-          setNamespaceSelecionado(props.namespace.value)
-
-        if(typeof props.workload.value === 'string')
-          setWorkloadSelecionado(props.workload.value)
+        if(typeof props.idFrontend.value === 'string')
+          setFrontendSelected(props.idFrontend.value)
 
         if(new Number(props.time.value) && setRefreshIntervalMs)
           setRefreshIntervalMs(props.time.value)
@@ -68,18 +58,8 @@ export const FiltersK8s = ({ onFiltersChange, refreshIntervalMs, setRefreshInter
 
       
     >
-      <FilterBar.Item name="cluster" label="Cluster">
-        <ClusterSelection timeFrame={timeframe}/>
-      </FilterBar.Item>
-      <FilterBar.Item name="namespace" label="NameSpace">
-        <NameSpaceSelection timeFrame={timeframe} k8sName={clusterSelecionado}/>
-      </FilterBar.Item>
-      <FilterBar.Item name="workload" label="Workloads">
-        <WorkloadsSelection 
-          timeFrame={timeframe}
-          nameSpace={namespaceSelecionado}
-          k8sName={clusterSelecionado}
-        />
+      <FilterBar.Item name="idFrontend" label="Frontend">
+        <FrontendSelection timeFrame={timeframe}/>
       </FilterBar.Item>
       <FilterBar.Item name="timeframe" label="">
         <TimeFrame />

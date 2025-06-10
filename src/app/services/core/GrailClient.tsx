@@ -1,20 +1,20 @@
-import { queryExecutionClient } from '@dynatrace-sdk/client-query';
+import { queryExecutionClient, QueryResult, ResultRecord } from '@dynatrace-sdk/client-query';
 import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
 
 
 export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export interface QueryResult {
-  data?: any;
-  error?: string;
-}
+// export interface QueryResult {
+//   data?: any;
+//   error?: string;
+// }
 
-export function executeDqlQuery(
+export function GrailDqlQuery(
   dql: string,
   timeFrame?: TimeframeV2,
   maxRetries = 10,
   retryDelay = 200,
-): Promise<QueryResult> {
+): Promise<QueryResult | { error: string; }> {
   try {
     const query = {
       query: dql,
@@ -34,12 +34,13 @@ export function executeDqlQuery(
   function pollUntilDone(
     requestToken: string,
     retriesLeft: number,
-  ): Promise<QueryResult> {
+  ): Promise<QueryResult | { error: string; }> {
     return queryExecutionClient
       .queryPoll({ requestToken })
       .then(pollResult => {
-        if (pollResult.state === 'SUCCEEDED') {
-          return { data: pollResult.result };
+        
+        if (pollResult.state === 'SUCCEEDED' && pollResult.result != undefined) {
+          return pollResult.result;
         }
 
         if (pollResult.state === 'FAILED') {

@@ -1,40 +1,25 @@
-import React from "react";
+  import React from "react";
 import { Link, NavLink, Link as RouterLink } from "react-router-dom";
 import { AppHeader, HelpMenu } from "@dynatrace/strato-components-preview/layouts";
-import { PlusIcon, SettingIcon } from "@dynatrace/strato-icons";
+import { GridIcon, MenuIcon, PlusIcon, SettingIcon } from "@dynatrace/strato-icons";
 import { Button } from '@dynatrace/strato-components/buttons';
 
 import { TimeFrame } from '../components/timeframe/Timeframe'
 
 type Props = {
   onToggleSetting: () => void;
+  onToggleMenu: () => void;
 };
-export const Header = ({ onToggleSetting }: Props) => {
+export const Header = ({ onToggleSetting, onToggleMenu }: Props) => {
   return (
     <AppHeader>
-      <AppHeader.NavItems>
-        <AppHeader.AppNavLink as={Link} to="/" />
-        
-        <AppHeader.NavItem as={Link} to="/data">
-          Explore Data
-        </AppHeader.NavItem>
-        <AppHeader.NavItem as={Link} to="/all">
-          All
-        </AppHeader.NavItem>
-
-        <AppHeader.NavItem as={Link} to="/hostList">
-          Host List
-        </AppHeader.NavItem>
-        <AppHeader.NavItem as={Link} to="/hostListDrill">
-          Host List Drill
-        </AppHeader.NavItem>
-        <AppHeader.NavItem as={Link} to="/history">
-          Status history
-        </AppHeader.NavItem>
-      </AppHeader.NavItems>
-
       <AppHeader.Navigation>
         <AppHeader.Logo as={NavLink} to="/" />
+        
+        <AppHeader.NavigationItem onClick={onToggleMenu}>
+          <MenuIcon></MenuIcon>
+        </AppHeader.NavigationItem>
+        
       </AppHeader.Navigation>
 
 

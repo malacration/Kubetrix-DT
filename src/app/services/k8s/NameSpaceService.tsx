@@ -1,5 +1,5 @@
 import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
-import { executeDqlQuery } from '../core/MetricsClient';
+import { GrailDqlQuery } from '../core/GrailClient';
 
 
 export async function getNamesSpaces(clusterName = "all", timeframe? : TimeframeV2) {
@@ -22,6 +22,6 @@ export async function getNamesSpaces(clusterName = "all", timeframe? : Timeframe
             | fields name
         ]
     `;
-    const result = await executeDqlQuery(dql,timeframe);
+    const result = await GrailDqlQuery(dql,timeframe);
     return result
 }

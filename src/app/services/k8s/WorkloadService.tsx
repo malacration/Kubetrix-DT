@@ -1,6 +1,6 @@
 import { TimeframeV2 } from "@dynatrace/strato-components-preview/core"
 import { clientClassic, MetricResult } from "../core/MetricsClientClassic"
-import { eventsClient, metricsClient } from "@dynatrace-sdk/client-classic-environment-v2";
+import { classicBaseLine } from "../baseLineService";
 
 export async function getWorkloads(kubernetsCluster = 'all', Namespace = 'all',timeFrame? : TimeframeV2) {
 
@@ -18,7 +18,7 @@ export async function getWorkloads(kubernetsCluster = 'all', Namespace = 'all',t
 }
 
 
-export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeFrame? : TimeframeV2, isTimeshift = false) : Promise<MetricResult>{
+export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeFrame? : TimeframeV2, isBaseLine = false) : Promise<MetricResult>{
   
   let clusterFilter = 'in("dt.entity.service", entitySelector("type(~"SERVICE~"),toRelationship.isClusterOfService(type(~"KUBERNETES_CLUSTER~"),entityName.equals(~"'+$kubernetsCluster+'~"))"))'
   if(!$kubernetsCluster || $kubernetsCluster == "all")
@@ -40,14 +40,12 @@ export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeF
     filter = ""
   
   const split  = ':splitBy()'
-  
-  let timeshift = ""
-  if(isTimeshift)
-    timeshift = ":timeshift(-7d)"
+  const metricSelector = metric+filter+split;
 
-  const metricSelector = metric+filter+split+":avg:toUnit(MicroSecond,Second)"+timeshift;
+  if(isBaseLine)
+    return classicBaseLine(metricSelector,timeFrame,":toUnit(MicroSecond,Second)")
 
-  return clientClassic(metricSelector,timeFrame)
+  return clientClassic(metricSelector+":avg:toUnit(MicroSecond,Second)",timeFrame)
 }
 
 export function  kubernetesWorkload(metricName : string,

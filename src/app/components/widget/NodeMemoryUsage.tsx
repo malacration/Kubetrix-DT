@@ -1,14 +1,13 @@
-import { ChartSeriesAction, HoneycombChart, HoneycombTileNumericData, Timeseries, TimeseriesChart } from '@dynatrace/strato-components-preview/charts';
+import { HoneycombChart, HoneycombTileNumericData, HoneycombTileCategoricalData, HoneycombTileData, ChartSeriesAction } from '@dynatrace/strato-components-preview/charts';
 import React, { useEffect, useState } from 'react';
 import { LastHostMetric } from 'src/app/services/k8s/NodeServices';
 import { percentOverloadColorScheme } from './style/Palette';
 import { ChartProps } from '../filters/BarChartProps';
 import { converterToHoneycomb } from 'src/app/services/core/GrailConverter';
-import { QueryResult } from '@dynatrace-sdk/client-query';
-import { ExternalLinkIcon } from '@dynatrace/strato-icons';
+import { ExternalLinkIcon, MagnifyingGlassIcon } from '@dynatrace/strato-icons';
 
 
-function NodeCpuOverload({ filters, refreshToken }: ChartProps, showLabels = true) {
+function NodeMemoryUsage({ filters, refreshToken }: ChartProps, showLabels = true) {
   const [metric, setMetric] = useState<HoneycombTileNumericData[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -22,8 +21,9 @@ function NodeCpuOverload({ filters, refreshToken }: ChartProps, showLabels = tru
     if (!cluster || !namespace || !workload || !timeframe) return;
   
     setLoading(true);
-    LastHostMetric("dt.host.cpu.usage",cluster, namespace, workload, timeframe).then((it) => {
+    LastHostMetric("dt.host.memory.usage",cluster, namespace, workload, timeframe).then((it) => {
       setMetric(converterToHoneycomb(it));
+      console.log(it)
       setLoading(false);
     });
   }, [
@@ -71,6 +71,6 @@ function NodeCpuOverload({ filters, refreshToken }: ChartProps, showLabels = tru
   );
 }
 
-(NodeCpuOverload as any).dashboardWidget = true;
+(NodeMemoryUsage as any).dashboardWidget = true;
 
-export { NodeCpuOverload };
+export { NodeMemoryUsage };

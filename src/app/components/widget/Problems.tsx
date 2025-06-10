@@ -84,8 +84,8 @@ function Problems({ filters, refreshToken}: ChartProps) {
       };
       
       ProblemsGetActive(cluster,namespace,workload,timeframe).then(it => {
-        if(it?.data?.records)
-          setProblems(it?.data.records.map(it => normalizeRecord(it)))
+        if(it?.records)
+          setProblems(it?.records.map(it => normalizeRecord(it)))
         setLoading(false);
       })
     };

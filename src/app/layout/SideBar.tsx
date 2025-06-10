@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import {
   Page,
@@ -10,20 +10,21 @@ import { Link } from 'react-router-dom';
 
 const exemplos = [
   { label: 'Generic', path: '/dashboards/Generic' },
+  { label: 'Frontend\'s', path: '/dashboards/Frontends' },
 ];
 
-export const SideBar = ({ isDismissed }: { isDismissed: boolean }) => {
-  
+export const SideBar = ({ isDismissed, onDismiss }: { isDismissed: boolean, onDismiss: () => void;}) => {
+
   return (
-    <Page.Sidebar dismissed={isDismissed}>
+    <Page.Sidebar dismissed={isDismissed} >
       <TitleBar>
         <TitleBar.Title>Dashboards</TitleBar.Title>
-        {/* <TitleBar.Subtitle>e.g. for navigation</TitleBar.Subtitle> */}
       </TitleBar>
       <br></br>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {exemplos.map((exemplo, idx) => (
                     <Button
+                    onClick={onDismiss}
                     key={idx}
                     as={Link}
                     to={exemplo.path}

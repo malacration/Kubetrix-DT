@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChartProps } from '../filters/BarChartProps';
+import { ChartProps } from '../../filters/BarChartProps';
 import { useMemo } from 'react';
 import { Flex } from '@dynatrace/strato-components/layouts';
 import {
@@ -61,8 +61,8 @@ function CallServices({ filters, refreshToken}: ChartProps) {
     if((workload && workload != "all") || (namespace && namespace != "all")){
       setLoading(true);
       getCallServices(cluster,namespace,workload,timeframe).then(it => {
-        if(it?.data?.records)
-          setProblems(it?.data.records.map(it => normalizeRecord(it)))
+        if(it?.records)
+          setProblems(it?.records.map(it => normalizeRecord(it)))
         setLoading(false);
       })
     }
