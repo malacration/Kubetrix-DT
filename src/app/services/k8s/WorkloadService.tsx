@@ -1,6 +1,9 @@
 import { TimeframeV2 } from "@dynatrace/strato-components-preview/core"
 import { clientClassic, MetricResult } from "../core/MetricsClientClassic"
 import { classicBaseLine } from "../baseLineService";
+import { GrailDqlQuery } from "../core/GrailClient";
+import { QueryResult } from "@dynatrace-sdk/client-query";
+import { pickResolution } from "src/app/components/timeframe/resolution";
 
 export async function getWorkloads(kubernetsCluster = 'all', Namespace = 'all',timeFrame? : TimeframeV2) {
 
@@ -18,34 +21,53 @@ export async function getWorkloads(kubernetsCluster = 'all', Namespace = 'all',t
 }
 
 
-export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeFrame? : TimeframeV2, isBaseLine = false) : Promise<MetricResult>{
+export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeFrame? : TimeframeV2, isBaseLine = false) : Promise<QueryResult | { error: string; }>{
   
-  let clusterFilter = 'in("dt.entity.service", entitySelector("type(~"SERVICE~"),toRelationship.isClusterOfService(type(~"KUBERNETES_CLUSTER~"),entityName.equals(~"'+$kubernetsCluster+'~"))"))'
+  const metric = "response_time"
+
+  let clusterFilter = `matchesValue(k8s.cluster.name, "${$kubernetsCluster}")`
   if(!$kubernetsCluster || $kubernetsCluster == "all")
     clusterFilter = ''
   
-  let namespaceFilter = 'in("dt.entity.service", entitySelector("type(~"SERVICE~"),toRelationship.isNamespaceOfService(type(~"CLOUD_APPLICATION_NAMESPACE~"),entityName.equals(~"'+$Namespace+'~"))"))'
+  let namespaceFilter = `matchesValue(k8s.namespace.name, "${$Namespace}")`
   if(!$Namespace || $Namespace == "all")
     namespaceFilter = ''
 
-  let workloadFilter = 'in("dt.entity.service", entitySelector("type(~"SERVICE~"),toRelationship.isNamespaceOfService(type(~"CLOUD_APPLICATION_NAMESPACE~"),fromRelationship.isNamespaceOfCa(type(~"CLOUD_APPLICATION~"),entityName.equals(~"'+$workload+'~")))"))'
+  let workloadFilter = `matchesValue(k8s.workload.name, "${$workload}")`
   if(!$workload || $workload == "all")
     workloadFilter = ''
   
-  const allFilters = [clusterFilter, namespaceFilter, workloadFilter].filter(f => f !== '').join(',');
+  const allFilters = [clusterFilter, namespaceFilter, workloadFilter].filter(f => f !== '').join(' AND ');
 
-  const metric = "builtin:service.response.time"
-  let filter = ':filter(and('+allFilters+'))';
+  let filter = `
+    , filter: { 
+      ${allFilters}
+    }
+  `
   if(allFilters == "")
     filter = ""
-  
-  const split  = ':splitBy()'
-  const metricSelector = metric+filter+split;
-
-  if(isBaseLine)
-    return classicBaseLine(metricSelector,timeFrame,":toUnit(MicroSecond,Second)")
-
-  return clientClassic(metricSelector+":avg:toUnit(MicroSecond,Second)",timeFrame)
+  const intervalNow = pickResolution(0,timeFrame)
+  const intervalBase = pickResolution(21,timeFrame)
+  const dql = `
+    timeseries 
+      now=avg(dt.service.request.response_time), interval:${intervalNow}
+      ${filter}
+      | append [
+          timeseries baseline = avg(dt.service.request.response_time), shift:-7d, interval:${intervalBase}
+          ${filter}
+        | append [
+            timeseries baseline = avg(dt.service.request.response_time), shift:-14d, interval:${intervalBase}
+            ${filter}
+        ]
+        | append [
+            timeseries baseline = avg(dt.service.request.response_time), shift:-21d, interval:${intervalBase}
+            ${filter}
+        ]
+        | summarize baseline = avg(baseline[]), by:{ timeframe, interval }
+        | fieldsKeep timeframe, interval, baseline
+      ]
+  `
+  return GrailDqlQuery(dql,timeFrame)
 }
 
 export function  kubernetesWorkload(metricName : string,

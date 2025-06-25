@@ -23,7 +23,6 @@ function NodeMemoryUsage({ filters, refreshToken }: ChartProps, showLabels = tru
     setLoading(true);
     LastHostMetric("dt.host.memory.usage",cluster, namespace, workload, timeframe).then((it) => {
       setMetric(converterToHoneycomb(it));
-      console.log(it)
       setLoading(false);
     });
   }, [

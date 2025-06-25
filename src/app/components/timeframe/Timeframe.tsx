@@ -41,6 +41,8 @@ const TimeFrame  = React.forwardRef<TimeRangePickerRef<HTMLDivElement>, TimeFram
     {from: '-30m', to: 'now()'},
     {from: '-1h', to: 'now()'},
     {from: '-2h', to: 'now()'},
+    {from: '-6h', to: 'now()'},
+    {from: '-12h', to: 'now()'},
     {from: '@d', to: 'now()'},
     {from: '-1d@d', to: '@d'},
     {from: '-24h', to: 'now()'},

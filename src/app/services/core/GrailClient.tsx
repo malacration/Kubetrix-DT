@@ -16,6 +16,8 @@ export function GrailDqlQuery(
   retryDelay = 200,
 ): Promise<QueryResult | { error: string; }> {
   try {
+    //TODO colocar variavel de ambiente para ligar e desligar debug
+    console.log(dql)
     const query = {
       query: dql,
       defaultTimeframeStart: timeFrame?.from.absoluteDate,

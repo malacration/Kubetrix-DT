@@ -14,7 +14,6 @@ export function classicBaseLine(baseQuery : string, timeframe? : TimeframeV2, to
     
     const query = `${querys.join('+')}`;
 
-    console.log(pickResolution(examples*7,timeframe))
     return clientClassic(query, timeframe, pickResolution(examples*7,timeframe)).then(res => {
       res?.response?.result.forEach(col => {
         col.data.forEach(ms => {

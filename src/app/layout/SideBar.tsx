@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 const exemplos = [
   { label: 'Generic', path: '/dashboards/Generic' },
   { label: 'Frontend\'s', path: '/dashboards/Frontends' },
+  { label: 'over-provisioning', path: '/dashboards/Generic' },
 ];
 
 export const SideBar = ({ isDismissed, onDismiss }: { isDismissed: boolean, onDismiss: () => void;}) => {

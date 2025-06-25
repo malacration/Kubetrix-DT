@@ -68,6 +68,5 @@ export function getCallServices(cluster,namespace,workload,timeframe) : Promise<
         | filter isNotNull(lookupId)
         | dedup lookupId
     `
-    console.log("dql",dql)
     return GrailDqlQuery(dql,timeframe);
 }
