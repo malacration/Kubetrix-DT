@@ -52,13 +52,12 @@ const Dashboards = () => {
                 <Services title='Services'></Services>
                 <Problems title='Problems'></Problems>
                 <div>
+                    <li>ajustar base time para avg 21 dias</li>
                     <li>Finalizar problems apos resolução do chamado</li>
                     <li>Data Base relacionados e problemas possiveis</li>
-                    <li>Adicionar dash com memory by hosting</li>
                     <li>Colocar a memoria disponivel para o workload selecionado</li>
                     <li>colocar o OOM kill como event dentro do timeserieschart</li>
                     <li>gerar OOM restart 24h</li>
-                    <li>adicionar OOM restart 24h</li>
                     <li>adicionar times de network com e sem SSL</li>
                 </div>
             </SharedChartInteractions>

@@ -7,10 +7,6 @@ import { shiftTimeframeBack } from 'src/app/model/ShiftTimeframeBack';
 import { QueryResult } from '@dynatrace-sdk/client-query';
 import { DQLResultConverter, convertQueryResultToTimeseries, convertToTimeseries } from '@dynatrace/strato-components-preview/conversion-utilities';
 import { convert, units } from "@dynatrace-sdk/units";
-
-
-
-
 import { ThumbsDownIcon, ViewIcon } from '@dynatrace/strato-icons';
 import { isQueryResult, queryResultToTimeseries } from 'src/app/services/core/GrailConverter';
 
@@ -35,25 +31,11 @@ function WorkloadResponseTime({ filters, refreshToken, title = "windson" }: Char
       setLoading(true);
       try {
         const result = await responseTime(cluster, namespace, workload, timeframe);
-        console.log(result)
-        const baseLine = await responseTime(cluster, namespace, workload,timeframe,true);
-
         if(isQueryResult(result)){
           const timeSeries = convertQueryResultToTimeseries(result)
           timeSeries.forEach(it => it.unit = units.time.microsecond)
           setSeries(timeSeries)
         }
-        
-        // const timeSeries  = await queryResultToTimeseries(result);
-        // const timeSeriesBaseLine   = await baseLine;
-        // console.log(timeSeries)
-
-        // TODO tentar usar a propria api do dynatrace https://developer.dynatrace.com/develop/visualize-data-in-apps/visualize-events/
-        // const buildTimeseries = (...queryResults: (QueryResult | undefined)[]) =>
-        //   queryResults.flatMap((res) => (res ? convertQueryResultToTimeseries(res) : []));
-        
-        // setSeries([...timeSeries]);
-        
       } catch (err) {
         console.error('Erro ao buscar métricas', err);
       } finally {
