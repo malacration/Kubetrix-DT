@@ -23,7 +23,8 @@ const ClusterSelection = React.forwardRef<HTMLDivElement, ClusterSelectionProps>
       new Option('All', 'all'),
     ]);
 
-    const [clusterSelecionado, setClusterSelecionado] = useState<string>('all');
+    const initialParams = new URLSearchParams(window.location.search);
+
 
     useEffect(() => {
       const fetchData = async () => {
@@ -49,7 +50,7 @@ const ClusterSelection = React.forwardRef<HTMLDivElement, ClusterSelectionProps>
     return (
       <div ref={ref}>
         <SelectComponent
-          defaultValue="all"
+          defaultValue={initialParams.get('cluster')   ?? 'all'}
           options={option}
           loading={loading}
           clearable={false}

@@ -25,25 +25,40 @@ function mergeFilterValues(
   return merged;
 }
 
+function updateQuery(cb: (p: URLSearchParams) => void) {
+  const p = new URLSearchParams(window.location.search);
+  cb(p);
+  const newUrl = `${window.location.pathname}?${p.toString()}`;
+  window.history.replaceState(null, '', newUrl);
+}
 
 export const FiltersK8s = ({ onFiltersChange, refreshIntervalMs, setRefreshIntervalMs }: FilterBarProps) => {
 
-    const [clusterSelecionado, setClusterSelecionado] = useState("all");
-    const [namespaceSelecionado, setNamespaceSelecionado] = useState("all");
-    const [workloadSelecionado, setWorkloadSelecionado] = useState("all");
-    const [timeframe, setTimeframe] = useState<TimeframeV2>(getDefaultTimeframe);
+  const initialParams = new URLSearchParams(window.location.search);
 
-    const [allProps, setAllProps] = useState<FilterItemValues>({
-      cluster:   { value: 'all'},
-      namespace: { value: 'all'},
-      workload:  { value: 'all'},
-      timeframe: { value: timeframe},
-    });
+
+  const [clusterSelecionado, setClusterSelecionado] = useState(initialParams.get('cluster')   ?? 'all');
+  const [namespaceSelecionado, setNamespaceSelecionado] = useState(initialParams.get('namespace')   ?? 'all');
+  const [workloadSelecionado, setWorkloadSelecionado] = useState(initialParams.get('workload')   ?? 'all');
+  const [timeframe, setTimeframe] = useState<TimeframeV2>(getDefaultTimeframe);
+
+  const [allProps, setAllProps] = useState<FilterItemValues>({
+    cluster:   { value: 'all'},
+    namespace: { value: 'all'},
+    workload:  { value: 'all'},
+    timeframe: { value: timeframe},
+  });
  
 
-    useEffect(() => {
-      onFiltersChange?.(allProps);
-    }, [allProps,clusterSelecionado,namespaceSelecionado,timeframe]);
+  useEffect(() => {
+    updateQuery(p => {
+      p.set('cluster',   clusterSelecionado);
+      p.set('namespace', namespaceSelecionado);
+      p.set('workload',  workloadSelecionado);
+      // timeframeToParams(timeframe, p);
+    });
+    onFiltersChange?.(allProps);
+  }, [allProps,clusterSelecionado,namespaceSelecionado,workloadSelecionado,timeframe]);
 
   return (
     <FilterBar

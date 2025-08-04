@@ -12,9 +12,13 @@ interface NameSpaceSelectionProps {
 
 export const NameSpaceSelection = forwardRef<HTMLDivElement, NameSpaceSelectionProps>(
   ({ k8sName, onChange, timeFrame }, ref: ForwardedRef<HTMLDivElement>) => {
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [option, setOption] = useState<Array<Option>>([new Option("All","all")]);
+
+    const initialParams = new URLSearchParams(window.location.search);
+    
 
     useEffect(() => {
       setLoading(true)
@@ -42,7 +46,7 @@ export const NameSpaceSelection = forwardRef<HTMLDivElement, NameSpaceSelectionP
     return( 
         <div ref={ref}>
             <SelectComponent 
-                defaultValue="all"
+                defaultValue={initialParams.get('namespace')   ?? 'all'}
                 options={option}
                 loading={loading}
                 clearable={false}

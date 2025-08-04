@@ -16,6 +16,8 @@ export const WorkloadsSelection = forwardRef<HTMLDivElement, WorkloadSelectionPr
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [option, setOption] = useState<Array<Option>>([new Option("All","all")]);
+    
+    const initialParams = new URLSearchParams(window.location.search);
 
     useEffect(() => {
       setLoading(true)
@@ -33,14 +35,13 @@ export const WorkloadsSelection = forwardRef<HTMLDivElement, WorkloadSelectionPr
           setLoading(false);
         }
       };
-    
         fetchData();
       }, [k8sName,nameSpace,timeFrame]);
 
     return( 
         <div ref={ref}>
             <SelectComponent
-                defaultValue="all"
+                defaultValue={initialParams.get('workload')   ?? 'all'}
                 options={option}
                 loading={loading}
                 clearable={false}
