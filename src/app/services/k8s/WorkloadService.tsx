@@ -76,7 +76,8 @@ export function  kubernetesWorkload(metricName : string,
     $workload?, 
     timeFrame? : TimeframeV2,
     extra? : string,
-    isTimeshift = false) : Promise<MetricResult>{
+    isTimeshift = false,
+    split = ':splitBy()') : Promise<MetricResult>{
 
   let clusterFilter = 'eq("k8s.cluster.name","'+$kubernetsCluster+'")'
   if(!$kubernetsCluster || $kubernetsCluster == "all")
@@ -96,7 +97,6 @@ export function  kubernetesWorkload(metricName : string,
   let filter = ':filter(and('+allFilters+'))';
   if(allFilters == "")
     filter = ""
-  const split  = ':splitBy()'
   
   let timeshift = ""
   if(isTimeshift)
