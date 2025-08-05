@@ -20,7 +20,7 @@ export async function clientClassic(
   const toTime = timeFrame?.to.absoluteDate ? new Date(timeFrame.to.absoluteDate) : now;
   const fromTime = timeFrame?.from.absoluteDate ? new Date(timeFrame.from.absoluteDate) : new Date(toTime.getTime() - 2 * 60 * 60 * 1000);
 
-  console.log(metricSelector)
+  // console.log(metricSelector)
 
   return metricsClient.query({
     metricSelector,

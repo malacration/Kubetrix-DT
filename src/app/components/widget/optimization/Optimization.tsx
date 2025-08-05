@@ -79,7 +79,7 @@ const Optimization = forwardRef<HTMLDivElement, ChartProps>(
         it.forEach(t => {
           t.raw().result.forEach(row => {
             const metricId = row.metricId
-            row.data.forEach(data => {
+            row.data.filter(f => f.dimensionMap["k8s.cluster.name"] != null).forEach(data => {
               const dm  = data.dimensionMap;
               const key = `${dm["k8s.cluster.name"]}-${dm["k8s.workload.name"]}-${dm["k8s.namespace.name"]}`
               let valor : MetricsGrouped | undefined = valores.get(key)
