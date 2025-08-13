@@ -53,7 +53,7 @@ const Optimization = forwardRef<HTMLDivElement, ChartProps>(
   const [loading, setLoading] = useState(false);
   
   const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
 
 
   const columns = useMemo<DataTableV2ColumnDef<(typeof data)[number]>[]>(
