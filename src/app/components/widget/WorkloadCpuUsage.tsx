@@ -8,7 +8,7 @@ import { ChartProps } from '../filters/BarChartProps';
 
 
 
-function WorkloadCpuUsage({ filters, refreshToken}: ChartProps) {
+function WorkloadCpuUsage({ filters, refreshToken}: ChartProps, desejado : boolean = false) {
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [throttled, setThrottled] = useState<Timeseries>();
   const [loading, setLoading] = useState(false);
@@ -32,9 +32,13 @@ function WorkloadCpuUsage({ filters, refreshToken}: ChartProps) {
         
         const throttled = await kubernetesWorkload("cpu_throttled",cluster, namespace, workload, timeframe, "sum():toUnit(MilliCores,Cores)");
 
-        const ts   = await result.metricDataToTimeseries(workload?? "All");
+        const ts   = await result.metricDataToTimeseries(workload?.toString()?? "All");
         const tsAgo   = await sevenDaysAgo.metricDataToTimeseries("7 Days Ago");
         const tsThrottled   = await throttled.metricDataToTimeseries("Throttled");
+
+        if(desejado){
+          result.plus(throttled)
+        }
 
         setSeries([...ts,...tsAgo,]);
         setThrottled(tsThrottled[0]);

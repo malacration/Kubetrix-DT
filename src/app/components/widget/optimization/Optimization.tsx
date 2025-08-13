@@ -1,6 +1,9 @@
 import React, { ForwardedRef, forwardRef, useEffect, useState } from 'react';
 import { useMemo } from 'react';
 import { Flex } from '@dynatrace/strato-components/layouts';
+import { Chip, ChipOwnProps, ChipProps } from "@dynatrace/strato-components-preview/content"
+import { InformationOverlay } from '@dynatrace/strato-components-preview/overlays';
+
 
 
 import {
@@ -9,7 +12,7 @@ import {
 } from '@dynatrace/strato-components-preview/tables'
 import { ChartProps } from '../../dashboard/DashBoard';
 import { getOptimizationData } from './query';
-import { MetricsGrouped } from './model';
+import { ChipValues, Metrics, MetricsGrouped } from './model';
 
 const normalizeRecord = (r: any) => ({
   id: r['event.id'],
@@ -22,24 +25,53 @@ const normalizeRecord = (r: any) => ({
   ...r,
 })
 
+function getResourceChip(metricas){
+  const rowData : MetricsGrouped = metricas.rowData
+  const chips: Array<ChipValues> = typeof rowData?.getChips === 'function'
+    ? rowData.getChips() ?? [] : [];
+  return chips?.length > 0 ? 
+        (<InformationOverlay>
+          <InformationOverlay.Trigger>
+          {rowData?.workload} 
+          </InformationOverlay.Trigger>
+          <InformationOverlay.Content>
+            <Flex flexDirection="column">
+                {chips.map((c, i) => (
+                  <Chip color={c.color} key={i}>{c.label}</Chip>
+                ))}
+              </Flex>
+          </InformationOverlay.Content>
+        </InformationOverlay>)
+        :
+        rowData?.workload
+}
 
 const Optimization = forwardRef<HTMLDivElement, ChartProps>(
   ( { filters, refreshToken, title},ref: ForwardedRef<HTMLDivElement>) => {  
   
   const [result, setResult] = useState<MetricsGrouped[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+
 
   const columns = useMemo<DataTableV2ColumnDef<(typeof data)[number]>[]>(
     () => [
-      { accessor: 'name', id: 'name', header: 'WorkLoad', width: { type: 'auto' }, },
-      
+      { accessor: 'name', id: 'name',
+        cell: (info) => getResourceChip(info),
+        header: 'WorkLoad', width: 165, 
+      },
+      { accessor: 'namespace', id: 'namespace',
+        header: 'namespace', width: 120, 
+      },
       { 
         accessor: 'resource', id: 'resource', 
-        header: 'Resource', alignment: 'center', width: { type: 'auto' }, 
+        header: 'Resource', alignment: 'center', width: 175, 
       },
       { 
         accessor: 'podDesired', id: 'podDesired', 
-        header: 'Pod\'s Desired', alignment: 'center', width: { type: 'auto' }, 
+        header: 'Pod\'s', alignment: 'center', width: 80,
       },
       
       { 
@@ -47,15 +79,25 @@ const Optimization = forwardRef<HTMLDivElement, ChartProps>(
         width: { type: 'auto' }, alignment: 'center', 
         columns: [
           { header: 'Request', accessor: 'cpuRequest', id: 'cpuRequest', width: { type: 'auto' }, alignment: 'center'},
-          { header: 'Limit', accessor: 'cpuLimit', id: 'cpuLimit', width: { type: 'auto' }, alignment: 'center'}    
+          { header: 'Limit', accessor: 'cpuLimit', id: 'cpuLimit', width: { type: 'auto' }, alignment: 'center'},
+          { header: '(-) Over | (+) Under', accessor: 'overUnderCpu', id: 'cpuOptimization', width: { type: 'auto' }, 
+            alignment: 'center', sortAccessor: 'overUnderCpuRaw', sortType: 'number',
+          }
         ]
       },
       { 
         header: 'Memory', accessor: 'memory', id: 'memory', 
-        width: { type: 'auto' }, alignment: 'center', 
+        width: { type: 'auto' }, alignment: 'center',
         columns: [
-          { header: 'Request', accessor: 'memoryRequest', id: 'memoryRequest', width: { type: 'auto' }, alignment: 'center'},
-          { header: 'Limit', accessor: 'memoryLimit', id: 'memoryLimit', width: { type: 'auto' }, alignment: 'center'}    
+          { header: 'Request', 
+            accessor: 'memoryRequest', 
+            id: 'memoryRequest', width: 
+            { type: 'auto' }, alignment: 'center'
+          },
+          { header: 'Limit', accessor: 'memoryLimit', id: 'memoryLimit', width: { type: 'auto' }, alignment: 'center'},
+          { header: '(-) Over | (+) Under', accessor: 'overUnderMemory', id: 'memoryOptimization', width: { type: 'auto' }, 
+            alignment: 'center', sortAccessor: 'overUnderMemoryRaw', sortType: 'number',
+          }
         ]
       },
     ],
@@ -103,6 +145,10 @@ const Optimization = forwardRef<HTMLDivElement, ChartProps>(
   }, [filters,refreshToken]);
 
 
+  const teste = function(){
+    return true
+  }
+
   return (
     <div ref={ref}>
       <Flex>
@@ -112,6 +158,7 @@ const Optimization = forwardRef<HTMLDivElement, ChartProps>(
           fullWidth sortable
           loading={loading} 
           columns={columns}
+
           variant={{
             rowDensity: 'default',
             rowSeparation: "zebraStripes",
@@ -125,6 +172,12 @@ const Optimization = forwardRef<HTMLDivElement, ChartProps>(
           }}
     
         >
+          <DataTableV2.Pagination
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            pageIndex={pageIndex}
+            onPageIndexChange={setPageIndex}
+          />
           <DataTableV2.EmptyState>
             Select at least one namespace
           </DataTableV2.EmptyState>
@@ -133,6 +186,13 @@ const Optimization = forwardRef<HTMLDivElement, ChartProps>(
     </div>
   );
 })
+/*
+-- TODO
+Adicionar texto explicando os calculos e orientações de como analisatar!
+
+Idealmente 
+*/
+
 
 // @ts-expect-error pede displayname e depois nao reconhece
 Optimization.dashboardWidget = true;

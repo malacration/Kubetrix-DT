@@ -111,6 +111,10 @@ export class MetricResult {
 
     return [...seriesMap.values()];
   }
+
+  plus(t){
+    console.log("windson")
+  }
   
   getHoneycomb(key: string): HoneycombTileNumericData[] {
     const accumulator: Record<string, number> = {};
