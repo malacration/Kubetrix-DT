@@ -27,10 +27,10 @@ function WorkloadCpuUsage({ filters, refreshToken}: ChartProps, desejado : boole
           timeframe: filters.timeframe?.value,
         };
 
-        const result = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum():toUnit(MilliCores,Cores)");
-        const sevenDaysAgo = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum():toUnit(MilliCores,Cores)",true);
+        const result = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "avg:toUnit(MilliCores,Cores)");
+        const sevenDaysAgo = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "avg:toUnit(MilliCores,Cores)",true);
         
-        const throttled = await kubernetesWorkload("cpu_throttled",cluster, namespace, workload, timeframe, "sum():toUnit(MilliCores,Cores)");
+        const throttled = await kubernetesWorkload("cpu_throttled",cluster, namespace, workload, timeframe, "avg:toUnit(MilliCores,Cores)");
 
         const ts   = await result.metricDataToTimeseries(workload?.toString()?? "All");
         const tsAgo   = await sevenDaysAgo.metricDataToTimeseries("7 Days Ago");

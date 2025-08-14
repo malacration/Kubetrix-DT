@@ -27,8 +27,8 @@ function WorkloadMemoryUsage({ filters, refreshToken}: ChartProps) {
           timeframe: filters.timeframe?.value,
         };
 
-        const result = await kubernetesWorkload("memory_working_set",cluster, namespace, workload, timeframe, "sum()");
-        const sevenDaysAgo = await kubernetesWorkload("memory_working_set",cluster, namespace, workload, timeframe, "sum()",true);
+        const result = await kubernetesWorkload("memory_working_set",cluster, namespace, workload, timeframe, "avg:toUnit(Bit,GibiByte)");
+        const sevenDaysAgo = await kubernetesWorkload("memory_working_set",cluster, namespace, workload, timeframe, "avg:toUnit(Bit,GibiByte)",true);
 
         const ts   = await result.metricDataToTimeseries(workload);
         const tsAgo  = await sevenDaysAgo.metricDataToTimeseries("7 Days Ago");

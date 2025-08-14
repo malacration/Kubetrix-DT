@@ -110,6 +110,7 @@ export const FiltersK8s = ({ onFiltersChange, refreshIntervalMs, setRefreshInter
           timeFrame={timeframe}
           nameSpace={namespaceSelecionado}
           k8sName={clusterSelecionado}
+          selected={workloadSelecionado}
         />
       </FilterBar.Item>
 
