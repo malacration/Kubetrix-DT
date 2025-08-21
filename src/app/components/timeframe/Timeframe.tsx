@@ -20,6 +20,7 @@ import {
   TimeframeSelector,
   Label,
 } from '@dynatrace/strato-components-preview/forms';
+import { useSetTimeFrame, useTimeFrame } from '../context/FilterK8sContext';
 
 
 type TimeFrameProps = {
@@ -29,9 +30,10 @@ type TimeFrameProps = {
 const TimeFrame  = React.forwardRef<TimeRangePickerRef<HTMLDivElement>, TimeFrameProps>( 
   ({ onChange }, ref: ForwardedRef<TimeRangePickerRef<HTMLDivElement>> )  => {
   
-  const [value, setValue] = useState<TimeframeV2 | null>(getDefaultTimeframe);
+  const value = useTimeFrame()
+  const setValue = useSetTimeFrame()
 
-  const handleChange = (newValue: TimeframeV2 | null) => {
+  const handleChange = (newValue: TimeframeV2) => {
     setValue(newValue);
     onChange?.(newValue);
   };

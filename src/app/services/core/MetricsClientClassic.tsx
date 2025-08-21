@@ -79,13 +79,26 @@ export class MetricResult {
   }
   unitCache = new Map<string, string>();
 
+
+  getFirstValueOfFirstMetric(): | { value: number; timestamp?: number } | undefined {
+    const serie = this.response?.result?.[0]?.data?.[0];
+    if (!serie?.values?.length) return undefined;
+
+    for (let i = 0; i < serie.values.length; i++) {
+      const v = serie.values[i];
+      if (v != null && Number.isFinite(v)) {
+        return { value: v, timestamp: serie.timestamps?.[i] };
+      }
+    }
+    return undefined;
+  }
+
   async metricDataToTimeseries(defaultName? : string): Promise<Timeseries[]> {
     const seriesMap = new Map<string, Timeseries>();
     const windowMs = resolutionToMs(this.response.resolution ?? '1m');
 
     for (const collection of this.response.result) {
       const unit = await getMetricUnit(collection.metricId);
-
       for (const ms of collection.data) {
         const hasDims = ms.dimensionMap && Object.keys(ms.dimensionMap).length > 0;
 
@@ -113,7 +126,7 @@ export class MetricResult {
   }
 
   plus(t){
-    console.log("windson")
+    console.log("plus t")
   }
   
   getHoneycomb(key: string): HoneycombTileNumericData[] {

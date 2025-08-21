@@ -32,7 +32,7 @@ export const SelectComponent = (select: Select) => {
       handleChange(defaultValue ?? null);
     }
     
-    maxLabel = Math.max(8,...options.flatMap(o => o.label.length));
+    maxLabel = Math.max(8,...options?.flatMap(o => o.label.length) ?? []);
     overlayWidth = `${Math.min(maxLabel * 8, 400)}px`;
 
   }, [options, selected, defaultValue]);
@@ -42,7 +42,7 @@ export const SelectComponent = (select: Select) => {
     onChange?.(value);
   };
 
-  let maxLabel = Math.max(8,...options.flatMap(o => o.label.length));
+  let maxLabel = Math.max(8,...options?.flatMap(o => o.label.length) ?? []);
   let overlayWidth = `${Math.min(maxLabel * 8, 400)}px`; // limite de 400 px
 
   return (

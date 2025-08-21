@@ -56,16 +56,31 @@ export class Metrics{
     return this.cpuConverter(this._cpuLimit)
   }
 
-  // Helpers (mantém tudo DRY)
-  ONE_MiB = 1_024 ** 2;     // 1 048 576  B
-  ONE_GiB = 1_024 ** 3;     // 1 073 741 824 B
+  get podCpuUsageAvg(){
+    return this.cpuUsageAvg/this.podDesired
+  }
 
-  /** Converte bytes em string “N.nn GiB” ou “N.nn MiB”  */
-  fmtBytes(bytes?: number): string | undefined {
-    if (bytes == null) return undefined;                // null ou undefined
+  get podCpuUsageMax(){
+    return this.cpuUsageMax/this.podDesired
+  }
+
+  get hasCpuThrottled() : boolean{
+    return this.cpuThrottled > 0.1
+  }
+
+  get isLowCpuLimit() : boolean{
+    return this.podCpuUsageMax < this._cpuLimit && this.hasCpuThrottled
+  }
+
+  // Helpers
+  ONE_MiB = 1_024 ** 2;
+  ONE_GiB = 1_024 ** 3;
+
+  /** Converte *bits* em “N.nn GiB/MiB” (base 1024). */
+  fmtBytes(bytes : number): string | undefined {
     return bytes >= this.ONE_GiB
-      ? `${(bytes / this.ONE_GiB).toFixed(2)} GB`
-      : `${(bytes / this.ONE_MiB).toFixed(2)} MB`;
+      ? `${(bytes / this.ONE_GiB).toFixed(2)} GiB`
+      : `${(bytes / this.ONE_MiB).toFixed(2)} MiB`;
   }
 
 
@@ -110,8 +125,10 @@ export class MetricsGrouped extends Metrics{
     }
 
     get overUnderCpuRaw() : number{
-      if(this._cpuRequest > 0 && this.cpuUsageAvg > 0 && this.podDesired > 0)
+      if(this._cpuRequest > 0 && this.cpuUsageAvg > 0 && this.podDesired > 0){
         return (this._cpuRequest-this.cpuUsageAvg/this.podDesired)*this.podDesired
+      }
+        
       return 0
     }
 
@@ -177,7 +194,10 @@ export class MetricsGrouped extends Metrics{
       metric.podDesired = this.podDesired
       
       metric._cpuRequest = Number(((this.cpuUsageAvg/this.podDesired)).toFixed(2))
-      metric._cpuLimit = Number(((this.cpuUsageAvg+this.cpuThrottled)/this.podDesired).toFixed(2))
+      if(this.isLowCpuLimit)
+        metric._cpuLimit = this._cpuLimit+(this.cpuThrottled/this.podDesired)
+      else
+        metric._cpuLimit = Number(((this.cpuUsageAvg+this.cpuThrottled)/this.podDesired).toFixed(2))
 
       const memory = (this.memoryUsageAvg/this.podDesired)*1.05
       metric._memoryRequest = memory
@@ -190,10 +210,13 @@ export class MetricsGrouped extends Metrics{
       metric.podDesired = this.podDesired
 
       metric._cpuRequest = Number(((this.cpuUsageAvg/this.podDesired)*1.2).toFixed(2))
-      metric._cpuLimit = Number((((this.cpuUsageMax+this.cpuThrottled)/this.podDesired)*1.2).toFixed(2))
-
+      if(this.isLowCpuLimit)
+        metric._cpuLimit = this._cpuLimit+(this.cpuThrottled/this.podDesired)*1.1
+      else
+        metric._cpuLimit = Number((((this.cpuUsageMax+this.cpuThrottled)/this.podDesired)*1.2).toFixed(2))
 
       const memory = (this.memoryUsageMax/this.podDesired)*1.2
+
       metric._memoryRequest = memory
       metric._memoryLimit = memory
       
@@ -205,7 +228,11 @@ export class MetricsGrouped extends Metrics{
       metric.podDesired = this.podDesired
 
       metric._cpuRequest = Number(((this.cpuUsageAvg/this.podDesired)).toFixed(2))
-      metric._cpuLimit = Number((((this.cpuUsageMax+this.cpuThrottled)/this.podDesired)*1.2).toFixed(2))
+      
+      if(this.isLowCpuLimit)
+        metric._cpuLimit = this._cpuLimit+(this.cpuThrottled/this.podDesired)*1.1
+      else
+        metric._cpuLimit = Number((((this.cpuUsageMax+this.cpuThrottled)/this.podDesired)*1.2).toFixed(2))
 
 
       const memory = (this.memoryUsageMax/this.podDesired)*1.2
@@ -250,15 +277,14 @@ export class MetricsGrouped extends Metrics{
     getChips() : Array<ChipValues> {
       const all : Array<ChipValues> = []
       
-      if(this.cpuThrottled > 0)
-        all.push({label: 'Throttled', color: "warning"})
+      if(this.hasCpuThrottled)
+        all.push({label: 'Throttled', color: "critical"})
 
       if(this.overUnderCpuRaw > 0)
         all.push({label: 'Underprovisioned - CPU', color: "warning"})
 
       if(this.overUnderCpuRaw < 0)
         all.push({label: 'Overprovisioned - CPU', color: "warning"})
-
 
       if(this.overUnderMemoryRaw > 0)
         all.push({label: 'Underprovisioned - Memory', color: "warning"})
@@ -267,7 +293,16 @@ export class MetricsGrouped extends Metrics{
         all.push({label: 'Overprovisioned - Memory', color: "warning"})
 
       if(this._memoryRequest != this._memoryLimit)
-        all.push({label: 'unbalanced memory', color: "warning"})
+        all.push({label: 'Unbalanced memory', color: "warning"})
+
+      if(this.isLowCpuLimit)
+        all.push({label: 'Low CPU Limit', color: "critical"})
+
+      //cpu request e limite 
+
+
+      if(this._cpuRequest == this._cpuLimit)
+        all.push({label: 'Low CPU Limit', color: "critical"})
 
       return all
     }

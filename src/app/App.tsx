@@ -8,6 +8,8 @@ import { Routes } from "./layout/Routes";
 
 
 import { DetailView } from "./layout/DetailView";
+import { FilterK8sContextProvider } from "./components/context/FilterK8sContext";
+import { NuqsAdapter } from "nuqs/dist/_tsup-dts-rollup";
 
 
 

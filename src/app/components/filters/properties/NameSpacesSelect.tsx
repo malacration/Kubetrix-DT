@@ -2,36 +2,48 @@ import React, { ForwardedRef, forwardRef, useEffect, useState } from 'react';
 import { Option, SelectComponent } from '../../form/Select';
 import { getNamesSpaces } from 'src/app/services/k8s/NameSpaceService';
 import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
+import { useClusterSelected, useNamespaceSelected, useSetNamespaceSelected, useTimeFrame } from '../../context/FilterK8sContext';
 
 
 interface NameSpaceSelectionProps {
   onChange?: (value: string | string[] | undefined) => void;
-  timeFrame? : TimeframeV2
-  k8sName : string
 }
 
 export const NameSpaceSelection = forwardRef<HTMLDivElement, NameSpaceSelectionProps>(
-  ({ k8sName, onChange, timeFrame }, ref: ForwardedRef<HTMLDivElement>) => {
+  ({ onChange }, ref: ForwardedRef<HTMLDivElement>) => {
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [option, setOption] = useState<Array<Option>>([new Option("All","all")]);
 
-    const initialParams = new URLSearchParams(window.location.search);
-    
+    const selected = useNamespaceSelected()
+    const setSelected = useSetNamespaceSelected()
+
+
+    const cluster = useClusterSelected()
+    const timeFrame = useTimeFrame()
 
     useEffect(() => {
       setLoading(true)
       const fetchData = async () => {
         try {
-          const response = await getNamesSpaces(k8sName,timeFrame);
-          const options = response.records.map((item: any) => {
+          const response = await getNamesSpaces(cluster,timeFrame);
+          const fetched = response.records.map((item: any) => {
               const label = item["name"];
               const value = item["name"];
               return new Option(label, value);
             });
-          setOption([new Option('All', 'all'), ...options]);
+          const nextOptions = [new Option('All', 'all'), ...fetched];
 
+          const exists = nextOptions.some(o => o.value == selected);
+          if (selected !== 'all' && !exists) {
+            setSelected("all")
+            const url = new URL(window.location.href);
+            url.searchParams.set('namespace', "all");
+            window.history.replaceState({}, '', url);
+            onChange("all")
+          }
+          setOption(nextOptions);
         } catch (err: any) {
           console.error("Erro ao buscar métricas:", err);
           setError(err.message || "Erro desconhecido");
@@ -39,14 +51,13 @@ export const NameSpaceSelection = forwardRef<HTMLDivElement, NameSpaceSelectionP
           setLoading(false);
         }
       };
-    
         fetchData();
-      }, [k8sName,timeFrame]);
+      }, [cluster,timeFrame]);
 
     return( 
         <div ref={ref}>
             <SelectComponent 
-                defaultValue={initialParams.get('namespace')   ?? 'all'}
+                defaultValue={selected}
                 options={option}
                 loading={loading}
                 clearable={false}

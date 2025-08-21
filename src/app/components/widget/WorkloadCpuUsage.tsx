@@ -5,6 +5,9 @@ import { MetricResult } from 'src/app/services/core/MetricsClientClassic';
 import { kubernetesWorkload, responseTime } from 'src/app/services/k8s/WorkloadService';
 import { convertQueryResultToTimeseries, convertToTimeseries } from '@dynatrace/strato-components-preview/conversion-utilities';
 import { ChartProps } from '../filters/BarChartProps';
+import { TimeSeriesMinMax } from 'src/app/model/TimeSeriesMinMax';
+import { Colors } from '@dynatrace/strato-design-tokens';
+import { Button } from '@dynatrace/strato-components';
 
 
 
@@ -12,6 +15,12 @@ function WorkloadCpuUsage({ filters, refreshToken}: ChartProps, desejado : boole
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [throttled, setThrottled] = useState<Timeseries>();
   const [loading, setLoading] = useState(false);
+
+  const [min,setMin] = useState(0)
+  const [max,setMax] = useState(1)
+  const [threshold, setThreshold] = useState<number>(0);
+
+  const [showThreshold, setShowThreshold] = useState<boolean>(true);
 
   useEffect(() => {
     if (!filters) return;
@@ -27,14 +36,21 @@ function WorkloadCpuUsage({ filters, refreshToken}: ChartProps, desejado : boole
           timeframe: filters.timeframe?.value,
         };
 
-        const result = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "avg:toUnit(MilliCores,Cores)");
-        const sevenDaysAgo = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "avg:toUnit(MilliCores,Cores)",true);
-        
-        const throttled = await kubernetesWorkload("cpu_throttled",cluster, namespace, workload, timeframe, "avg:toUnit(MilliCores,Cores)");
+        console.log("parametros cpu: ",filters)
+        const result = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)");
+        const sevenDaysAgo = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)",true);
+        const throttled = await kubernetesWorkload("cpu_throttled",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)");
 
         const ts   = await result.metricDataToTimeseries(workload?.toString()?? "All");
         const tsAgo   = await sevenDaysAgo.metricDataToTimeseries("7 Days Ago");
         const tsThrottled   = await throttled.metricDataToTimeseries("Throttled");
+
+        
+        const limits = await kubernetesWorkload(
+          "limits_cpu",cluster, namespace, workload, timeframe,
+          "max:toUnit(MilliCores,Cores):last"
+        );
+        setThreshold(limits.getFirstValueOfFirstMetric()?.value ?? 0)
 
         if(desejado){
           result.plus(throttled)
@@ -52,15 +68,37 @@ function WorkloadCpuUsage({ filters, refreshToken}: ChartProps, desejado : boole
     load();
   }, [filters,refreshToken]);
 
+  useEffect(() => {
+    const minMax = new TimeSeriesMinMax(series)
+    setMin(minMax.rawMin)
+    if(showThreshold)
+      setMax(Math.max(minMax.rawMax, threshold))
+    else
+      setMax(minMax.rawMax)
+  },[series,threshold,showThreshold])  
+
   return (
+    <div>
+    <Button
+        color="primary" variant="accent"
+        onClick={() => setShowThreshold(s => !s)}
+      >
+        {showThreshold ? 'Ocultar threshold' : 'Mostrar threshold'}
+      </Button>
     <TimeseriesChart
       loading={loading}
       data={series}
-      
     >
       {throttled ? <TimeseriesChart.Bar data={throttled}  /> : <></>}
+      <TimeseriesChart.YAxis min={min * 0.95} max={max * 1.05} />
+      <TimeseriesChart.Threshold
+        data={{ value: threshold }}
+        color={Colors.Charts.Threshold.Bad.Default}
+        label="Limits"
+      />
       <TimeseriesChart.Legend position="bottom" />
       </TimeseriesChart>
+      </div>
   );
 }
 

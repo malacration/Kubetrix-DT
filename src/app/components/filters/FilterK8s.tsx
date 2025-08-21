@@ -11,6 +11,7 @@ import { getDefaultTimeframe } from '../timeframe/DefaultTimeframe';
 import { FilterBarProps } from '../dashboard/DashBoard';
 import { SelectComponent } from '../form/Select';
 import { useSearchParams } from 'react-router-dom';
+import { useClusterSelected, useNamespaceSelected, useSetClusterSelected, useSetNamespaceSelected, useSetTimeFrame, useSetWorkloadSelected, useTimeFrame, useWorkloadSelected } from '../context/FilterK8sContext';
 
 function mergeFilterValues(prev: FilterItemValues, next: FilterItemValues): FilterItemValues {
   const merged = { ...prev };
@@ -25,53 +26,23 @@ function mergeFilterValues(prev: FilterItemValues, next: FilterItemValues): Filt
 export const FiltersK8s = ({ onFiltersChange, refreshIntervalMs, setRefreshIntervalMs }: FilterBarProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Estados iniciais lendo da URL atual (uma única vez via função initializer)
-  const [clusterSelecionado, setClusterSelecionado]   = useState(() => searchParams.get('cluster')   ?? 'all');
-  const [namespaceSelecionado, setNamespaceSelecionado] = useState(() => searchParams.get('namespace') ?? 'all');
-  const [workloadSelecionado, setWorkloadSelecionado] = useState(() => searchParams.get('workload')  ?? 'all');
-  const [timeframe, setTimeframe] = useState<TimeframeV2>(getDefaultTimeframe);
+  
+  const setClusterSelecionado = useSetClusterSelected()
+  const setNamespaceSelecionado = useSetNamespaceSelected()
+  const setWorkloadSelecionado = useSetWorkloadSelected()
+  const timeframe = useSetTimeFrame()
 
   const [allProps, setAllProps] = useState<FilterItemValues>({
-    cluster:   { value: clusterSelecionado },
-    namespace: { value: namespaceSelecionado },
-    workload:  { value: workloadSelecionado },
-    timeframe: { value: timeframe },
+    cluster:   { value: useClusterSelected() },
+    namespace: { value: useNamespaceSelected() },
+    workload:  { value: useWorkloadSelected() },
+    timeframe: { value: useTimeFrame() },
   });
 
-  // Mantém estados sincronizados caso a URL mude por fora (voltar do histórico, etc.)
-  useEffect(() => {
-    const sCluster = searchParams.get('cluster')   ?? 'all';
-    const sNs      = searchParams.get('namespace') ?? 'all';
-    const sWl      = searchParams.get('workload')  ?? 'all';
-
-    if (sCluster !== clusterSelecionado)   setClusterSelecionado(sCluster);
-    if (sNs !== namespaceSelecionado)      setNamespaceSelecionado(sNs);
-    if (sWl !== workloadSelecionado)       setWorkloadSelecionado(sWl);
-  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Atualiza a URL via React Router (preserva params desconhecidos) — nada de window.history
-  const updateQuery = useCallback((mutate: (p: URLSearchParams) => void) => {
-    const next = new URLSearchParams(searchParams);
-    mutate(next);
-    const before = searchParams.toString();
-    const after  = next.toString();
-    if (after !== before) setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
-
-  // Escreve os filtros na URL sempre que mudarem
-  useEffect(() => {
-    updateQuery(p => {
-      p.set('cluster',   clusterSelecionado);
-      p.set('namespace', namespaceSelecionado);
-      p.set('workload',  workloadSelecionado);
-      // timeframeToParams(timeframe, p); // se/quando quiser persistir timeframe
-    });
-  }, [clusterSelecionado, namespaceSelecionado, workloadSelecionado, timeframe, updateQuery]);
-
-  // Notifica o pai quando o conjunto de filtros muda
   useEffect(() => {
     onFiltersChange?.(allProps);
   }, [allProps, onFiltersChange]);
+
 
   return (
     <FilterBar
@@ -92,26 +63,20 @@ export const FiltersK8s = ({ onFiltersChange, refreshIntervalMs, setRefreshInter
         if (!Number.isNaN(maybeTime) && setRefreshIntervalMs)
           setRefreshIntervalMs(maybeTime);
 
-        // timeframe (seu componente já garante o tipo)
         // @ts-expect-error framework garante a tipagem
-        if (props.timeframe?.value) setTimeframe(props.timeframe.value);
+        if (props.timeframe?.value) timeframe(props.timeframe.value);
       }}
     >
       <FilterBar.Item name="cluster" label="Cluster">
-        <ClusterSelection timeFrame={timeframe}/>
+        <ClusterSelection/>
       </FilterBar.Item>
 
       <FilterBar.Item name="namespace" label="NameSpace">
-        <NameSpaceSelection timeFrame={timeframe} k8sName={clusterSelecionado}/>
+        <NameSpaceSelection/>
       </FilterBar.Item>
 
       <FilterBar.Item name="workload" label="Workloads">
-        <WorkloadsSelection
-          timeFrame={timeframe}
-          nameSpace={namespaceSelecionado}
-          k8sName={clusterSelecionado}
-          selected={workloadSelecionado}
-        />
+        <WorkloadsSelection/>
       </FilterBar.Item>
 
       <FilterBar.Item name="timeframe" label="">

@@ -32,10 +32,12 @@
     "@dynatrace/strato-components-preview": "^1.9.1",
     "@dynatrace/strato-design-tokens": "^1.0.1",
     "@dynatrace/strato-icons": "^1.5.1",
+    "nuqs": "^2.4.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-intl": "6.6.2",
-    "react-router-dom": "^6.22.2"
+    "react-router-dom": "^6.22.2",
+    "use-context-selector": "^2.0.0"
   },
   "devDependencies": {
     "@microsoft/eslint-plugin-sdl": "^0.2.0",

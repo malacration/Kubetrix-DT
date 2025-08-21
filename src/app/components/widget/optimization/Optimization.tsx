@@ -108,7 +108,7 @@ const Optimization = forwardRef<HTMLDivElement, ChartProps>(
     if (!filters) return;
 
     setLoading(true);
-    let { cluster, namespace, workload, timeframe } = {
+    const { cluster, namespace, workload, timeframe } = {
       cluster:   filters.cluster?.value,
       namespace: filters.namespace?.value,
       workload:  filters.workload?.value,
@@ -142,12 +142,11 @@ const Optimization = forwardRef<HTMLDivElement, ChartProps>(
     }else{
       setLoading(false);
     }
-  }, [filters,refreshToken]);
+  }, [filters, refreshToken]);
 
 
-  const teste = function(){
-    return true
-  }
+
+  
 
   return (
     <div ref={ref}>

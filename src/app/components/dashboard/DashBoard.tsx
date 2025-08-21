@@ -85,7 +85,7 @@ function injectPropsRecursively(
 const Dashboard: React.FC<DashboardProps> & { Filter: typeof DashboardFilter } = ({
   children, defaultRefreshIntervalMs = 60000,
 }) => {
-  const [filters, setFilters] = useState<FilterItemValues>({});
+  const [filters, setFilters] = useState<FilterItemValues>();
   const [refreshToken, setRefreshToken] = useState(Date.now());
   const [refreshIntervalMs, setRefreshIntervalMs] = useState(defaultRefreshIntervalMs);
 
