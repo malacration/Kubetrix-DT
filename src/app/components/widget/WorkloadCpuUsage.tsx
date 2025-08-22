@@ -11,7 +11,7 @@ import { Button } from '@dynatrace/strato-components';
 
 
 
-function WorkloadCpuUsage({ filters, refreshToken}: ChartProps, desejado : boolean = false) {
+function WorkloadCpuUsage({ filters, lastRefreshedAt}: ChartProps, desejado : boolean = false) {
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [throttled, setThrottled] = useState<Timeseries>();
   const [loading, setLoading] = useState(false);
@@ -36,7 +36,7 @@ function WorkloadCpuUsage({ filters, refreshToken}: ChartProps, desejado : boole
           timeframe: filters.timeframe?.value,
         };
 
-        console.log("parametros cpu: ",filters)
+        console.log("parametros cpu: ",JSON.stringify(timeframe.to))
         const result = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)");
         const sevenDaysAgo = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)",true);
         const throttled = await kubernetesWorkload("cpu_throttled",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)");
@@ -66,7 +66,7 @@ function WorkloadCpuUsage({ filters, refreshToken}: ChartProps, desejado : boole
     };
 
     load();
-  }, [filters,refreshToken]);
+  }, [filters,lastRefreshedAt]);
 
   useEffect(() => {
     const minMax = new TimeSeriesMinMax(series)

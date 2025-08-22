@@ -16,7 +16,7 @@ const normalizeRecord = (r: any) => ({
   ...r,
 })
 
-function ServicesByFrontEnd({ filters, refreshToken}: ChartProps) {
+function ServicesByFrontEnd({ filters, lastRefreshedAt}: ChartProps) {
   
   const url = getEnvironmentUrl();
 
@@ -66,7 +66,7 @@ function ServicesByFrontEnd({ filters, refreshToken}: ChartProps) {
         setLoading(false);
       })
     }
-  }, [filters,refreshToken]);
+  }, [filters,lastRefreshedAt]);
 
   return (
     <div>

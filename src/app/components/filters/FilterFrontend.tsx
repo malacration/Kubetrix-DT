@@ -27,7 +27,7 @@ function mergeFilterValues(
 }
 
 
-export const FilterFrontend = ({ onFiltersChange, refreshIntervalMs, setRefreshIntervalMs }: FilterBarProps) => {
+export const FilterFrontend = ({ onFiltersChange }: FilterBarProps) => {
 
     const [frontendSelected, setFrontendSelected] = useState<string>();
     const [timeframe, setTimeframe] = useState<TimeframeV2>(getDefaultTimeframe);
@@ -49,8 +49,8 @@ export const FilterFrontend = ({ onFiltersChange, refreshIntervalMs, setRefreshI
         if(typeof props.idFrontend.value === 'string')
           setFrontendSelected(props.idFrontend.value)
 
-        if(new Number(props.time.value) && setRefreshIntervalMs)
-          setRefreshIntervalMs(props.time.value)
+        // if(new Number(props.time.value) && setRefreshIntervalMs)
+        //   setRefreshIntervalMs(props.time.value)
 
         // @ts-expect-error o framework garante a tipagem
         setTimeframe(props.timeframe.value)

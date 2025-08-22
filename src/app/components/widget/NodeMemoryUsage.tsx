@@ -7,7 +7,7 @@ import { converterToHoneycomb } from 'src/app/services/core/GrailConverter';
 import { ExternalLinkIcon, MagnifyingGlassIcon } from '@dynatrace/strato-icons';
 
 
-function NodeMemoryUsage({ filters, refreshToken }: ChartProps, showLabels = true) {
+function NodeMemoryUsage({ filters, lastRefreshedAt }: ChartProps, showLabels = true) {
   const [metric, setMetric] = useState<HoneycombTileNumericData[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +30,7 @@ function NodeMemoryUsage({ filters, refreshToken }: ChartProps, showLabels = tru
     filters?.namespace?.value,
     filters?.workload?.value,
     filters?.timeframe?.value,
-    refreshToken
+    lastRefreshedAt
   ]);
 
   const openEntity = (entity) => {

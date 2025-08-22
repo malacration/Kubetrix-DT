@@ -11,7 +11,7 @@ import { getDefaultTimeframe } from '../timeframe/DefaultTimeframe';
 import { FilterBarProps } from '../dashboard/DashBoard';
 import { SelectComponent } from '../form/Select';
 import { useSearchParams } from 'react-router-dom';
-import { useClusterSelected, useNamespaceSelected, useSetClusterSelected, useSetNamespaceSelected, useSetTimeFrame, useSetWorkloadSelected, useTimeFrame, useWorkloadSelected } from '../context/FilterK8sContext';
+import { useAutoRefreshMs, useClusterSelected, useNamespaceSelected, useSetAutoRefreshMs, useSetClusterSelected, useSetNamespaceSelected, useSetTimeFrame, useSetWorkloadSelected, useTimeFrame, useWorkloadSelected } from '../context/FilterK8sContext';
 
 function mergeFilterValues(prev: FilterItemValues, next: FilterItemValues): FilterItemValues {
   const merged = { ...prev };
@@ -23,7 +23,7 @@ function mergeFilterValues(prev: FilterItemValues, next: FilterItemValues): Filt
   return merged;
 }
 
-export const FiltersK8s = ({ onFiltersChange, refreshIntervalMs, setRefreshIntervalMs }: FilterBarProps) => {
+export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   
@@ -31,6 +31,10 @@ export const FiltersK8s = ({ onFiltersChange, refreshIntervalMs, setRefreshInter
   const setNamespaceSelecionado = useSetNamespaceSelected()
   const setWorkloadSelecionado = useSetWorkloadSelected()
   const timeframe = useSetTimeFrame()
+  const setAutoRefreshMs = useSetAutoRefreshMs()
+  const autoRefresh = useAutoRefreshMs()
+  
+  
 
   const [allProps, setAllProps] = useState<FilterItemValues>({
     cluster:   { value: useClusterSelected() },
@@ -60,8 +64,8 @@ export const FiltersK8s = ({ onFiltersChange, refreshIntervalMs, setRefreshInter
 
         // tempo de auto-refresh
         const maybeTime = Number(props.time?.value);
-        if (!Number.isNaN(maybeTime) && setRefreshIntervalMs)
-          setRefreshIntervalMs(maybeTime);
+        if (maybeTime && !Number.isNaN(maybeTime))
+          setAutoRefreshMs(maybeTime);
 
         // @ts-expect-error framework garante a tipagem
         if (props.timeframe?.value) timeframe(props.timeframe.value);
@@ -85,11 +89,11 @@ export const FiltersK8s = ({ onFiltersChange, refreshIntervalMs, setRefreshInter
 
       <FilterBar.Item name="time" label="Auto Refresh">
         <SelectComponent
-          defaultValue="300000"
+          defaultValue={autoRefresh.toString()}
           options={[
+            new Option("10m", "600000"),
             new Option("5m", "300000"),
             new Option("1m", "60000"),
-            new Option("30s","30000"),
           ]}
           clearable={false}
         />

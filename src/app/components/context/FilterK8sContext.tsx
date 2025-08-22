@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { createContext, useContextSelector } from "use-context-selector";
-import { useQueryState, parseAsString } from "nuqs";
+import { useQueryState, parseAsString, parseAsInteger } from "nuqs";
 import { Option } from "../form/Select";
 import { TimeframeV2 } from "@dynatrace/strato-components-preview/core";
 import { getDefaultTimeframe } from "../timeframe/DefaultTimeframe";
@@ -45,9 +45,11 @@ export interface FilterK8sContextData {
   setTimeFrame: Dispatch<SetStateAction<TimeframeV2>>;
 
   // refresh
-  autoRefreshMs?: number;
-  setAutoRefreshMs?: Dispatch<SetStateAction<number>>;
-  lastRefreshedAt?: Date | string;
+  autoRefreshMs: number;
+  setAutoRefreshMs: Dispatch<SetStateAction<number>>;
+
+  lastRefreshedAt: Date;
+  setLastRefreshedAt: Dispatch<SetStateAction<Date>>;
 }
 
 const FilterK8sContext = createContext<FilterK8sContextData>(
@@ -85,6 +87,11 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
     parseAsString.withDefault("all")
   );
 
+  const [autoRefreshMsRaw, setAutoRefreshMsRaw] = useQueryState<number>(
+    "ar",
+    parseAsInteger.withDefault(20000)
+  );
+
   // Adaptadores para manter a assinatura Dispatch<SetStateAction<string>>
   const setClusterSelected: Dispatch<SetStateAction<string>> = (upd) => {
     const next =
@@ -100,6 +107,7 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
         : upd;
     setNamespaceSelectedRaw(next ?? "all");
   };
+
   const setWorkloadSelected: Dispatch<SetStateAction<string>> = (upd) => {
     const next =
       typeof upd === "function"
@@ -108,13 +116,18 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
     setWorkloadSelectedRaw(next ?? "all");
   };
 
+  const setAutoRefreshMs: Dispatch<SetStateAction<number>> = (upd) => {
+    const next =
+      typeof upd === "function"
+        ? (upd as (prev: number) => number)(autoRefreshMsRaw)
+        : upd;
+        setAutoRefreshMsRaw(next ?? "20000");
+  };
+
   // TIMEFRAME (state local; se quiser, dá pra serializar em query depois)
   const [timeFrame, setTimeFrame] = useState<TimeframeV2>(getDefaultTimeframe());
-
-  // AUTO REFRESH
-  const [autoRefreshMs, setAutoRefreshMs] = useState<number | undefined>(undefined);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | string | undefined>(
-    undefined
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(
+    new Date()
   );
 
   const value = useMemo<FilterK8sContextData>(
@@ -142,9 +155,10 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
       setTimeFrame,
 
       // refresh
-      autoRefreshMs,
+      autoRefreshMs: autoRefreshMsRaw,
       setAutoRefreshMs,
       lastRefreshedAt,
+      setLastRefreshedAt
     }),
     [
       clusterOptions,
@@ -154,7 +168,7 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
       workloadOptions,
       workloadSelectedRaw,
       timeFrame,
-      autoRefreshMs,
+      autoRefreshMsRaw,
       lastRefreshedAt,
     ]
   );
@@ -189,10 +203,15 @@ export const useSetTimeFrame = () =>
 
 export const useAutoRefreshMs = () =>
   useContextSelector(FilterK8sContext, (v) => v.autoRefreshMs);
+
 export const useSetAutoRefreshMs = () =>
   useContextSelector(FilterK8sContext, (v) => v.setAutoRefreshMs);
+
 export const useLastRefreshedAt = () =>
   useContextSelector(FilterK8sContext, (v) => v.lastRefreshedAt);
+
+export const useSetLastRefreshedAt = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setLastRefreshedAt);
 
 // NEW: selectors para options
 export const useClusterOptions = () =>
@@ -208,5 +227,7 @@ export const useSetNamespaceOptions = () =>
 
 export const useWorkloadOptions = () =>
   useContextSelector(FilterK8sContext, (v) => v.workloadOptions);
+
 export const useSetWorkloadOptions = () =>
   useContextSelector(FilterK8sContext, (v) => v.setWorkloadOptions);
+

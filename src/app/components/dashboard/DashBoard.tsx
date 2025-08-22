@@ -8,12 +8,7 @@ import {
 import Spacings from '@dynatrace/strato-design-tokens/spacings';
 import { Heading } from '@dynatrace/strato-components/typography';
 import { FilterItemValues } from '@dynatrace/strato-components-preview/filters';
-
-export interface ChartProps {
-  filters?: FilterItemValues;    // será injetado
-  refreshToken?: number;         // será injetado
-  title?: string;
-}
+import { useAutoRefreshMs, useLastRefreshedAt, useSetLastRefreshedAt } from '../context/FilterK8sContext';
 
 interface DashboardProps {
   children: React.ReactNode;
@@ -22,8 +17,7 @@ interface DashboardProps {
 
 export interface FilterBarProps {
   onFiltersChange?: (f: FilterItemValues) => void;
-  refreshIntervalMs?: number;
-  setRefreshIntervalMs?: (ms: number) => void;
+  lastRefreshedAt : Date
 }
 
 function DashboardFilter(
@@ -35,7 +29,7 @@ DashboardFilter.displayName = 'DashboardFilter';
 
 function injectPropsRecursively(
   node: React.ReactNode,
-  filterProps: { filters: FilterItemValues; refreshToken: number },
+  filterProps: { filters: FilterItemValues; lastRefreshedAt: Date },
   filterBarProps: FilterBarProps,
 ): React.ReactNode {
 
@@ -85,19 +79,29 @@ function injectPropsRecursively(
 const Dashboard: React.FC<DashboardProps> & { Filter: typeof DashboardFilter } = ({
   children, defaultRefreshIntervalMs = 60000,
 }) => {
-  const [filters, setFilters] = useState<FilterItemValues>();
-  const [refreshToken, setRefreshToken] = useState(Date.now());
-  const [refreshIntervalMs, setRefreshIntervalMs] = useState(defaultRefreshIntervalMs);
+  const [filters, setFilters] = useState<FilterItemValues>({});
 
-  // dispara refreshToken a cada intervalo
+  const autoRefresh = useAutoRefreshMs()
+  const setContextLastRefreshedAt = useSetLastRefreshedAt()
+  const contextLastRefreshedAt = useLastRefreshedAt()
+
+  const enhancedChildren = useMemo(() => {
+    console.log(contextLastRefreshedAt)
+    return injectPropsRecursively(children,{ filters: filters, lastRefreshedAt: contextLastRefreshedAt },
+    { onFiltersChange: setFilters, lastRefreshedAt: contextLastRefreshedAt },)
+  },[children, filters, contextLastRefreshedAt]);
+
   useEffect(() => {
-    const id = setInterval(() => setRefreshToken(Date.now()), refreshIntervalMs);
-    return () => clearInterval(id);
-  }, [refreshIntervalMs]);
+    if (!autoRefresh || autoRefresh <= 0) return;
 
-  const enhancedChildren = useMemo(() => 
-    injectPropsRecursively(children,{ filters, refreshToken },{ onFiltersChange: setFilters, refreshIntervalMs, setRefreshIntervalMs },)
-  ,[children, filters, refreshToken, refreshIntervalMs]);
+    const id = setInterval(() => {
+      const data = new Date()
+      console.log(data)
+      setContextLastRefreshedAt(data);
+    }, autoRefresh);
+
+    return () => clearInterval(id);
+  }, [autoRefresh, setContextLastRefreshedAt]);
 
   return (
     <Flex flexDirection="column">
@@ -108,5 +112,3 @@ const Dashboard: React.FC<DashboardProps> & { Filter: typeof DashboardFilter } =
 
 Dashboard.Filter = DashboardFilter;
 export { Dashboard };
-
-

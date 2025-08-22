@@ -13,7 +13,7 @@ import { isQueryResult, queryResultToTimeseries } from 'src/app/services/core/Gr
 
 
 
-function WorkloadResponseTime({ filters, refreshToken, title = "windson" }: ChartProps) {
+function WorkloadResponseTime({ filters, lastRefreshedAt, title = "windson" }: ChartProps) {
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +44,7 @@ function WorkloadResponseTime({ filters, refreshToken, title = "windson" }: Char
     };
 
     load();
-  }, [filters,refreshToken]);
+  }, [filters,lastRefreshedAt]);
 
   return (
     <TimeseriesChart

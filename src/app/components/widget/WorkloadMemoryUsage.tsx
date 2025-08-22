@@ -10,7 +10,7 @@ import { Colors } from '@dynatrace/strato-design-tokens';
 import { Button } from '@dynatrace/strato-components';
 
 
-function WorkloadMemoryUsage({ filters, refreshToken}: ChartProps) {
+function WorkloadMemoryUsage({ filters, lastRefreshedAt}: ChartProps) {
   const [metric, setMetric] = useState<MetricResult | null>(null);
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,7 +58,7 @@ function WorkloadMemoryUsage({ filters, refreshToken}: ChartProps) {
     };
 
     load();
-  }, [filters,refreshToken]);
+  }, [filters,lastRefreshedAt]);
 
   useEffect(() => {
     const minMax = new TimeSeriesMinMax(series)

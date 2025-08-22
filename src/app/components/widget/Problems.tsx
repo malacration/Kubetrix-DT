@@ -33,7 +33,7 @@ const normalizeRecord = (r: any) => ({
   ...r,                 // mantém o resto, se precisar
 })
 
-function Problems({ filters, refreshToken}: ChartProps) {
+function Problems({ filters, lastRefreshedAt}: ChartProps) {
   
   const [problems, setProblems] = useState<[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,7 +91,7 @@ function Problems({ filters, refreshToken}: ChartProps) {
     };
 
     load();
-  }, [filters,refreshToken]);
+  }, [filters,lastRefreshedAt]);
 
   return (
     <div>

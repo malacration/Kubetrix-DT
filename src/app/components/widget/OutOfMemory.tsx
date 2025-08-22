@@ -7,7 +7,7 @@ import { kubernetesMetrics } from 'src/app/services/k8s/kubernetsService';
 
 
 
-function OutOfMemory({ filters, refreshToken}: ChartProps) {
+function OutOfMemory({ filters, lastRefreshedAt}: ChartProps) {
   const [metric, setMetric] = useState<HoneycombTileNumericData[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +35,7 @@ function OutOfMemory({ filters, refreshToken}: ChartProps) {
     };
 
     load();
-  }, [filters,refreshToken]);
+  }, [filters,lastRefreshedAt]);
 
   return (
     <HoneycombChart loading={loading}

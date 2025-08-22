@@ -11,7 +11,7 @@ import { ThumbsDownIcon, ViewIcon } from '@dynatrace/strato-icons';
 
 
 
-function WorkloadThroughput({ filters, refreshToken }: ChartProps) {
+function WorkloadThroughput({ filters, lastRefreshedAt }: ChartProps) {
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +44,7 @@ function WorkloadThroughput({ filters, refreshToken }: ChartProps) {
     };
 
     load();
-  }, [filters,refreshToken]);
+  }, [filters,lastRefreshedAt]);
 
   return (
     <TimeseriesChart curve="smooth"

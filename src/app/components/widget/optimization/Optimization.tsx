@@ -10,9 +10,10 @@ import {
   DataTableV2,
   type DataTableV2ColumnDef,
 } from '@dynatrace/strato-components-preview/tables'
-import { ChartProps } from '../../dashboard/DashBoard';
+
 import { getOptimizationData } from './query';
 import { ChipValues, Metrics, MetricsGrouped } from './model';
+import { ChartProps } from '../../filters/BarChartProps';
 
 const normalizeRecord = (r: any) => ({
   id: r['event.id'],
@@ -47,7 +48,7 @@ function getResourceChip(metricas){
 }
 
 const Optimization = forwardRef<HTMLDivElement, ChartProps>(
-  ( { filters, refreshToken, title},ref: ForwardedRef<HTMLDivElement>) => {  
+  ( { filters, lastRefreshedAt, title},ref: ForwardedRef<HTMLDivElement>) => {  
   
   const [result, setResult] = useState<MetricsGrouped[]>([]);
   const [loading, setLoading] = useState(false);
@@ -142,7 +143,7 @@ const Optimization = forwardRef<HTMLDivElement, ChartProps>(
     }else{
       setLoading(false);
     }
-  }, [filters, refreshToken]);
+  }, [filters, lastRefreshedAt]);
 
 
 

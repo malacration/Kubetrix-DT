@@ -8,7 +8,7 @@ import { QueryResult } from '@dynatrace-sdk/client-query';
 import { ExternalLinkIcon } from '@dynatrace/strato-icons';
 
 
-function NodeCpuOverload({ filters, refreshToken }: ChartProps, showLabels = true) {
+function NodeCpuOverload({ filters, lastRefreshedAt }: ChartProps, showLabels = true) {
   const [metric, setMetric] = useState<HoneycombTileNumericData[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +31,7 @@ function NodeCpuOverload({ filters, refreshToken }: ChartProps, showLabels = tru
     filters?.namespace?.value,
     filters?.workload?.value,
     filters?.timeframe?.value,
-    refreshToken
+    lastRefreshedAt
   ]);
 
   const openEntity = (entity) => {
