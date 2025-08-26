@@ -9,6 +9,8 @@ import {
 import { Link } from '@dynatrace/strato-components/typography';
 import { getCallServices } from 'src/app/services/services';
 import { getEnvironmentUrl } from '@dynatrace-sdk/app-environment';
+import { timeFormatter, countFormatter, microToMileSeconds, countAbreviation } from './formater';
+import { Trend } from './Trend';
 
 
 const normalizeRecord = (r: any) => ({
@@ -29,12 +31,12 @@ function CallServices({ filters, lastRefreshedAt}: ChartProps) {
         header: 'Name',
         accessor: row => row.name,
         id: 'name',
-        width: { type: 'auto' },
+        width: { type: 'auto', maxWidth: 350 },
         cell: ({ value, rowData }) => {
           return (
             <DataTableV2.DefaultCell >
               <Link
-                href={`${getEnvironmentUrl()}/ui/apps/dynatrace.classic.services/ui/entity/${rowData?.lookupId}`}
+                href={`${getEnvironmentUrl()}/ui/apps/dynatrace.classic.services/ui/entity/${rowData?.id}`}
                 target="_blank"
               >
                 {value}
@@ -43,11 +45,62 @@ function CallServices({ filters, lastRefreshedAt}: ChartProps) {
           );
         },
       },
-      { accessor: 'serviceTechnologyTypes', id: 'technologyTypes', header: 'Technology', width: { type: 'auto' } },
+      { accessor: 'serviceTechnologyTypes', id: 'technologyTypes', header: 'Technology', width: { type: 'auto', maxWidth:150 }, sortType:"number" },
+
+      {
+        header: 'Response Time',
+        accessor: row => row,
+        id: 'currResponse',
+        width: { type: 'auto', maxWidth: 180, },
+        sortAccessor: 'currResponse',
+        sortType:"number",
+        cell: ({ value }) => {
+          return (
+            <DataTableV2.DefaultCell >
+                <Trend
+                  curr={value.currResponse}
+                  base={value.baseResponse}
+                  lowerIsBetter={true}
+                  tolPct={5}
+                  label={microToMileSeconds(value.currResponse)}
+                />
+            </DataTableV2.DefaultCell>
+          );
+        },
+      },
+      { 
+        accessor: 'baseResponse', id: 'baseResponse', header: 'Base Response Time', 
+        formatter:timeFormatter, width: { type: 'auto',maxWidth: 180 }, sortType:"number" 
+      },
+      {
+        header: 'Throughput',
+        accessor: row => row,
+        id: 'currCount',
+        width: { type: 'auto', maxWidth: 180, },
+        sortAccessor: 'currCount',
+        sortType:"number",
+        cell: ({ value }) => {
+          return (
+            <DataTableV2.DefaultCell >
+                <Trend
+                  curr={value.currCount}
+                  base={value.baseCount}
+                  lowerIsBetter={true}
+                  tolPct={5}
+                  label={countAbreviation(value.currCount)}
+                />
+            </DataTableV2.DefaultCell>
+          );
+        },
+      },
+      { 
+        accessor: 'baseCount', id: 'baseCount', header: 'Base Throughput', 
+        formatter:countFormatter, width: { type: 'auto',maxWidth: 180 }, sortType:"number" 
+      },
     ],
     []
   );
-
+  
   
   
   useEffect(() => {
@@ -75,6 +128,7 @@ function CallServices({ filters, lastRefreshedAt}: ChartProps) {
           data={problems}
           resizable
           fullWidth sortable
+          defaultSortBy={[{id:"currCount", desc:true}]}
           loading={loading} 
           columns={columns}
           variant={{

@@ -30,9 +30,11 @@ export class TimeSeriesMinMax {
   private _min = 0;
   private _max = 1;
   private opts: MinMaxOptions;
+  private threshold = 0
 
-  constructor(series: Timeseries[], opts?: Partial<MinMaxOptions>) {
-    this.opts = { padding: 0.10, clampZero: true, mode: 'range', ...opts };
+  constructor(series: Timeseries[], threshold : number = 0, opts?: Partial<MinMaxOptions>) {
+    this.threshold = threshold
+    this.opts = { padding: 0.05, clampZero: true, mode: 'relative', ...opts };
     this.recompute(series);
   }
 
@@ -53,7 +55,7 @@ export class TimeSeriesMinMax {
     }
 
     this._min = Math.min(...values);
-    this._max = Math.max(...values);
+    this._max = Math.max(...values,this.threshold);
 
     // Evita limites idênticos (série “plana”)
     if (this._min === this._max) {
@@ -78,7 +80,6 @@ export class TimeSeriesMinMax {
       const max = this._max + maxPad;
       return { min, max };
     }
-
     // mode === 'range'
     const padAbs = Math.max(this.range, Number.EPSILON) * padding;
     const min = clampZero ? Math.max(0, this._min - padAbs) : this._min - padAbs;

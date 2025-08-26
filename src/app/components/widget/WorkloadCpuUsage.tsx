@@ -36,7 +36,6 @@ function WorkloadCpuUsage({ filters, lastRefreshedAt}: ChartProps, desejado : bo
           timeframe: filters.timeframe?.value,
         };
 
-        console.log("parametros cpu: ",JSON.stringify(timeframe.to))
         const result = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)");
         const sevenDaysAgo = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)",true);
         const throttled = await kubernetesWorkload("cpu_throttled",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)");
@@ -69,13 +68,18 @@ function WorkloadCpuUsage({ filters, lastRefreshedAt}: ChartProps, desejado : bo
   }, [filters,lastRefreshedAt]);
 
   useEffect(() => {
-    const minMax = new TimeSeriesMinMax(series)
-    setMin(minMax.rawMin)
-    if(showThreshold)
-      setMax(Math.max(minMax.rawMax, threshold))
-    else
-      setMax(minMax.rawMax)
-  },[series,threshold,showThreshold])  
+    const arr = throttled != null ? [...series, throttled] : series;
+    let minMax : { min, max }
+    if(showThreshold){
+      minMax = new TimeSeriesMinMax(arr,threshold).padded
+      setMax(Math.max(minMax.max, threshold))
+    }
+    else{
+      minMax = new TimeSeriesMinMax(arr).padded
+      setMax(minMax.max)
+    }
+      setMin(Math.min(minMax.min))
+  },[series,threshold,showThreshold,throttled])  
 
   return (
     <div>
@@ -89,14 +93,14 @@ function WorkloadCpuUsage({ filters, lastRefreshedAt}: ChartProps, desejado : bo
       loading={loading}
       data={series}
     >
-      {throttled ? <TimeseriesChart.Bar data={throttled}  /> : <></>}
-      <TimeseriesChart.YAxis min={min * 0.95} max={max * 1.05} />
-      <TimeseriesChart.Threshold
-        data={{ value: threshold }}
-        color={Colors.Charts.Threshold.Bad.Default}
-        label="Limits"
-      />
-      <TimeseriesChart.Legend position="bottom" />
+        {throttled ? <TimeseriesChart.Bar data={throttled}  /> : <></>}
+        <TimeseriesChart.YAxis min={min} max={max} />
+          <TimeseriesChart.Threshold
+            data={{ value: threshold }}
+            color={Colors.Charts.Threshold.Bad.Default}
+            label="Limits"
+          />
+        <TimeseriesChart.Legend position="bottom" />
       </TimeseriesChart>
       </div>
   );
