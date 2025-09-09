@@ -1,0 +1,48 @@
+/* KubetrixKpi.css */
+
+/* 🔸 Regra global: tudo dentro do Container tem raio de Field */
+.kdt-container * {
+  /* Usa o token de raio Field; com fallback de 8px */
+  border-radius: var(--dt-borders-radius-field-default, 8px);
+}
+
+/* Linhas baseadas em Flex */
+.kdt-row {
+  display: flex;
+  width: 100%;
+}
+
+.kdt-row--tall {
+  height: 12em;
+}
+
+/* “Badge” à esquerda (o rótulo do frontend) */
+.kdt-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 0.5em;
+
+  /* cor neutra — token de charts/status; cai para neutro se não existir */
+  background-color: var(--dt-colors-charts-status-neutral-default, var(--dt-colors-background-field-neutral-emphasized, #e4e5eb));
+  color: var(--dt-colors-text-neutral-on-accent-default);
+  min-width: 6em;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+.kdt-badge__title {
+  margin: 0 0 var(--dt-spacings-size-8, 8px) 0;
+}
+
+/* Área do gráfico/conteúdo à direita */
+.kdt-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+

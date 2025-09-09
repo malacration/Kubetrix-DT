@@ -1,16 +1,13 @@
-import { subDays } from 'date-fns';
 import React, { useEffect, useState } from 'react';
 
 import type { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
 import { FilterBar, FilterItemValues } from '@dynatrace/strato-components-preview/filters';
-import { ClusterSelection } from './properties/ClusterSelect';
-import { NameSpaceSelection } from './properties/NameSpacesSelect';
-import { WorkloadsSelection } from './properties/WorkloadsSelect';
 import { TimeFrame } from '../timeframe/Timeframe';
 import { getDefaultTimeframe } from '../timeframe/DefaultTimeframe';
 import { FilterBarProps } from '../dashboard/DashBoard';
 import { SelectComponent } from '../form/Select';
 import { FrontendSelection } from './properties/FrontendSelect';
+import { useAutoRefreshMs, useFrontendsSelected, useSetAutoRefreshMs, useSetFrontendsSelected, useSetTimeFrame, useTimeFrame } from '../context/FilterK8sContext';
 
 function mergeFilterValues(
   prev: FilterItemValues,
@@ -29,48 +26,56 @@ function mergeFilterValues(
 
 export const FilterFrontend = ({ onFiltersChange }: FilterBarProps) => {
 
-    const [frontendSelected, setFrontendSelected] = useState<string>();
-    const [timeframe, setTimeframe] = useState<TimeframeV2>(getDefaultTimeframe);
+  const setFrontend = useSetFrontendsSelected()
+  const setTimeframe = useSetTimeFrame()
+  const autoRefresh = useAutoRefreshMs()
+  const setAutoRefreshMs = useSetAutoRefreshMs()
 
-    const [allProps, setAllProps] = useState<FilterItemValues>({
-      timeframe: { value: timeframe},
-    });
- 
 
-    useEffect(() => {
-      onFiltersChange?.(allProps);
-    }, [frontendSelected,timeframe]);
+
+  const [allProps, setAllProps] = useState<FilterItemValues>({
+    frontends:   { value: useFrontendsSelected() },
+    timeframe: { value: useTimeFrame() },
+  });
+
+  useEffect(() => {
+    onFiltersChange?.(allProps);
+  }, [allProps, onFiltersChange]);
 
   return (
     <FilterBar
       onFilterChange={(props) => {
         setAllProps((prev) => mergeFilterValues(prev, props));
 
-        if(typeof props.idFrontend.value === 'string')
-          setFrontendSelected(props.idFrontend.value)
+        if(typeof props.frontends.value === 'string')
+          setFrontend([props.frontends.value])
+        else{
+          setFrontend(props.frontends.value)
+        }
 
-        // if(new Number(props.time.value) && setRefreshIntervalMs)
-        //   setRefreshIntervalMs(props.time.value)
 
-        // @ts-expect-error o framework garante a tipagem
+        const maybeTime = Number(props.time?.value);
+        if (maybeTime && !Number.isNaN(maybeTime))
+          setAutoRefreshMs(maybeTime);
+
         setTimeframe(props.timeframe.value)
       }}
 
       
     >
-      <FilterBar.Item name="idFrontend" label="Frontend">
-        <FrontendSelection timeFrame={timeframe}/>
+      <FilterBar.Item name="frontends" label="Frontend">
+        <FrontendSelection />
       </FilterBar.Item>
       <FilterBar.Item name="timeframe" label="">
         <TimeFrame />
       </FilterBar.Item>
       <FilterBar.Item name="time" label="Auto Refresh">
         <SelectComponent
-          defaultValue="300000"
+          defaultValue={autoRefresh.toString()}
           options={[
-            new Option("5m","300000"),
-            new Option("1m","60000"),
-            new Option("30s","30000")
+            new Option("10m", "600000"),
+            new Option("5m", "300000"),
+            new Option("1m", "60000"),
           ]}
           clearable={false}
         />
