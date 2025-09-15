@@ -3,7 +3,7 @@
 /* 🔸 Regra global: tudo dentro do Container tem raio de Field */
 .kdt-container * {
   /* Usa o token de raio Field; com fallback de 8px */
-  border-radius: var(--dt-borders-radius-field-default, 8px);
+  /* border-radius: var(--dt-borders-radius-field-default, 8px); */
 }
 
 /* Linhas baseadas em Flex */
@@ -13,7 +13,7 @@
 }
 
 .kdt-row--tall {
-  height: 12em;
+  height: 8.5em;
 }
 
 /* “Badge” à esquerda (o rótulo do frontend) */
@@ -34,9 +34,9 @@
   hyphens: auto;
 }
 
-.kdt-badge__title {
-  margin: 0 0 var(--dt-spacings-size-8, 8px) 0;
-}
+/* .kdt-badge__title {
+  margin: 0 0 var(--dt-spacings-size-4, 4px) 0;
+} */
 
 /* Área do gráfico/conteúdo à direita */
 .kdt-content {
@@ -46,3 +46,8 @@
   height: 100%;
 }
 
+
+.kx-contrast-on-critical {
+  text-shadow: 0 0.5px 0.5px rgba(0,0,0,.35), 0 0 1px rgba(0,0,0,.35);
+  -webkit-text-stroke: 0.5px rgba(0,0,0,.35);
+}

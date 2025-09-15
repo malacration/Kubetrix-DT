@@ -12,50 +12,14 @@ import { useQueryState, parseAsString, parseAsInteger, parseAsArrayOf } from "nu
 import { Option } from "../form/Select";
 import { TimeframeV2 } from "@dynatrace/strato-components-preview/core";
 import { getDefaultTimeframe } from "../timeframe/DefaultTimeframe";
+import { FilterK8sContextData } from "./FilterK8sContextData";
 
 /** Props do Provider */
 interface FilterK8sContextProps {
   children: ReactElement;
 }
 
-export interface FilterK8sContextData {
-  // cluster
-  clusterOptions: Array<Option>;
-  clusterSelected: string;
-  setClusterSelected: Dispatch<SetStateAction<string>>;
-  // NEW: setters de options
-  setClusterOptions?: Dispatch<SetStateAction<Array<Option>>>;
 
-  // namespace
-  namespaceOptions: Array<Option>;
-  namespaceSelected: string;
-  setNamespaceSelected: Dispatch<SetStateAction<string>>;
-  // NEW
-  setNamespaceOptions?: Dispatch<SetStateAction<Array<Option>>>;
-
-  // workload
-  workloadOptions: Array<Option>;
-  workloadSelected: string;
-  setWorkloadSelected: Dispatch<SetStateAction<string>>;
-  setWorkloadOptions?: Dispatch<SetStateAction<Array<Option>>>;
-
-  // frontends
-  frontendsOptions: Array<Option>;
-  frontendsSelected: Array<string>;
-  setFrontendsSelected: Dispatch<SetStateAction<Array<string>>>;
-  setFrontendsOptions?: Dispatch<SetStateAction<Array<Option>>>;
-
-  // time
-  timeFrame: TimeframeV2;
-  setTimeFrame: Dispatch<SetStateAction<TimeframeV2>>;
-
-  // refresh
-  autoRefreshMs: number;
-  setAutoRefreshMs: Dispatch<SetStateAction<number>>;
-
-  lastRefreshedAt: Date;
-  setLastRefreshedAt: Dispatch<SetStateAction<Date>>;
-}
 
 const FilterK8sContext = createContext<FilterK8sContextData>(
   {} as FilterK8sContextData
@@ -99,9 +63,18 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
     parseAsInteger.withDefault(300000)
   );
 
-const [frontendsSelectedRaw, setFrontendsSelectedRaw] = useQueryState<string[]>('front',
-  parseAsArrayOf(parseAsString).withDefault(['all'])
-);
+  const [frontendsSelectedRaw, setFrontendsSelectedRaw] = useQueryState<string[]>('front',
+    parseAsArrayOf(parseAsString).withDefault(['all'])
+  );
+
+  const [frontKpisSelectedRaw, setFrontKpisSelectedRaw] = useQueryState<string[]>('fkpis',
+    parseAsArrayOf(parseAsString).withDefault([])
+    .withOptions({
+      history: 'replace',
+      shallow: true,
+    })
+
+  );
 
   // Adaptadores para manter a assinatura Dispatch<SetStateAction<string>>
   const setClusterSelected: Dispatch<SetStateAction<string>> = (upd) => {
@@ -127,16 +100,27 @@ const [frontendsSelectedRaw, setFrontendsSelectedRaw] = useQueryState<string[]>(
     setWorkloadSelectedRaw(next ?? "all");
   };
 
-const setFrontendsSelected: Dispatch<SetStateAction<string[]>> = (upd) => {
-  const next =
-    typeof upd === 'function'
-      ? (upd as (prev: string[]) => string[])(frontendsSelectedRaw ?? ['all'])
-      : upd;
+  const setFrontendsSelected: Dispatch<SetStateAction<string[]>> = (upd) => {
+    const next =
+      typeof upd === 'function'
+        ? (upd as (prev: string[]) => string[])(frontendsSelectedRaw ?? ['all'])
+        : upd;
 
-  const safe = !next || next.length === 0 ? ['all'] : next;
+    const safe = !next || next.length === 0 ? ['all'] : next;
 
-  return setFrontendsSelectedRaw(safe);
-};
+    return setFrontendsSelectedRaw(safe);
+  };
+
+
+  const setFrontKpisSelected: Dispatch<SetStateAction<string[]>> = (upd) => {
+    const next =
+      typeof upd === 'function'
+        ? (upd as (prev: string[]) => string[])(frontKpisSelectedRaw ?? [])
+        : upd;
+
+    const safe = !next || next.length === 0 ? [] : next;
+    return setFrontKpisSelectedRaw(safe);
+  };
 
   const setAutoRefreshMs: Dispatch<SetStateAction<number>> = (upd) => {
     const next =
@@ -174,11 +158,15 @@ const setFrontendsSelected: Dispatch<SetStateAction<string[]>> = (upd) => {
 
       //frontend
       frontendsOptions,
+      setFrontendsOptions,
+      
       frontendsSelected: frontendsSelectedRaw,
       setFrontendsSelected,
-      setFrontendsOptions,
-
-
+      
+      //kpis
+      frontKpisSelected: frontKpisSelectedRaw,
+      setFrontKpisSelected,
+      
       // time
       timeFrame,
       setTimeFrame,
@@ -188,6 +176,7 @@ const setFrontendsSelected: Dispatch<SetStateAction<string[]>> = (upd) => {
       setAutoRefreshMs,
       lastRefreshedAt,
       setLastRefreshedAt,
+      
     }),
     [
       clusterOptions,
@@ -198,6 +187,7 @@ const setFrontendsSelected: Dispatch<SetStateAction<string[]>> = (upd) => {
       workloadSelectedRaw,
       frontendsOptions,
       frontendsSelectedRaw,
+      frontKpisSelectedRaw,
       timeFrame,
       autoRefreshMsRaw,
       lastRefreshedAt,
@@ -265,8 +255,15 @@ export const useSetWorkloadOptions = () =>
 
 export const useFrontendsSelected = () =>
   useContextSelector(FilterK8sContext, (v) => v.frontendsSelected);
+
 export const useSetFrontendsSelected = () =>
   useContextSelector(FilterK8sContext, (v) => v.setFrontendsSelected);
+
+export const useFrontKpisSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.frontKpisSelected);
+
+export const useSetFrontKpisSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setFrontKpisSelected);
 
 export const useFrontendsOptions = () =>
   useContextSelector(FilterK8sContext, (v) => v.frontendsOptions);

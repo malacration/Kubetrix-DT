@@ -1,20 +1,15 @@
 import React, { useEffect, useState } from 'react';
 
-import type { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
 import { FilterBar, FilterItemValues } from '@dynatrace/strato-components-preview/filters';
 import { TimeFrame } from '../timeframe/Timeframe';
-import { getDefaultTimeframe } from '../timeframe/DefaultTimeframe';
 import { FilterBarProps } from '../dashboard/DashBoard';
 import { SelectComponent } from '../form/Select';
 import { FrontendSelection } from './properties/FrontendSelect';
-import { useAutoRefreshMs, useFrontendsSelected, useSetAutoRefreshMs, useSetFrontendsSelected, useSetTimeFrame, useTimeFrame } from '../context/FilterK8sContext';
+import { useAutoRefreshMs, useFrontendsSelected, useFrontKpisSelected, useSetAutoRefreshMs, useSetFrontendsSelected, useSetFrontKpisSelected, useSetTimeFrame, useTimeFrame } from '../context/FilterK8sContext';
+import { KpisFrontSelection } from './properties/KpisFrontSelect';
 
-function mergeFilterValues(
-  prev: FilterItemValues,
-  next: FilterItemValues,
-): FilterItemValues {
+function mergeFilterValues(prev: FilterItemValues, next: FilterItemValues): FilterItemValues {
   const merged = { ...prev };
-
   for (const [key, val] of Object.entries(next)) {
     if (val && 'value' in val && val.value !== undefined && val.value !== null) {
       merged[key as keyof FilterItemValues] = val;
@@ -27,6 +22,7 @@ function mergeFilterValues(
 export const FilterFrontend = ({ onFiltersChange }: FilterBarProps) => {
 
   const setFrontend = useSetFrontendsSelected()
+  const setKpis = useSetFrontKpisSelected()
   const setTimeframe = useSetTimeFrame()
   const autoRefresh = useAutoRefreshMs()
   const setAutoRefreshMs = useSetAutoRefreshMs()
@@ -36,6 +32,7 @@ export const FilterFrontend = ({ onFiltersChange }: FilterBarProps) => {
   const [allProps, setAllProps] = useState<FilterItemValues>({
     frontends:   { value: useFrontendsSelected() },
     timeframe: { value: useTimeFrame() },
+    kpis: { value: useFrontKpisSelected() },
   });
 
   useEffect(() => {
@@ -49,8 +46,14 @@ export const FilterFrontend = ({ onFiltersChange }: FilterBarProps) => {
 
         if(typeof props.frontends.value === 'string')
           setFrontend([props.frontends.value])
-        else{
+        else if(props.frontends.value){
           setFrontend(props.frontends.value)
+        }
+
+        if(typeof props.kpis.value === 'string')
+          setKpis([props.kpis.value])
+        else if(props.kpis.value){
+          setKpis(props.kpis.value)
         }
 
 
@@ -65,6 +68,9 @@ export const FilterFrontend = ({ onFiltersChange }: FilterBarProps) => {
     >
       <FilterBar.Item name="frontends" label="Frontend">
         <FrontendSelection />
+      </FilterBar.Item>
+      <FilterBar.Item name="kpis" label="KPI's">
+        <KpisFrontSelection />
       </FilterBar.Item>
       <FilterBar.Item name="timeframe" label="">
         <TimeFrame />

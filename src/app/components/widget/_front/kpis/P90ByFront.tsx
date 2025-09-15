@@ -9,26 +9,26 @@ import {
   Unit,
   units,
 } from '@dynatrace-sdk/units';
-import { useTimeFrame } from '../../context/FilterK8sContext';
-import { KpiCore, MetricDirection, NowBaseline } from './kpiCore';
+import { useTimeFrame } from '../../../context/FilterK8sContext';
+import { KpiCore, MetricDirection, NowBaseline } from '../kpiCore';
 import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
-import { AnalyticsIcon, ConnectorIcon } from '@dynatrace/strato-icons';
+import { ClockIcon } from '@dynatrace/strato-icons';
 
 
 type ByFrontProp = {
   front: string;
 };
 
-const ThroughputByFront = ({ front }: ByFrontProp) => {
+const P90ByFront = ({ front }: ByFrontProp) => {
 
-  const formatter: FormatOptions<Unit, ConvertibleUnit> = {
-    input: units.amount.one,
+  const timeFormatter: FormatOptions<Unit, ConvertibleUnit> = {
+    input: units.time.microsecond,
     maximumFractionDigits: 1,
     cascade: 1
   };
   
   const funcao = async (front: string, timeframe: TimeframeV2): Promise<NowBaseline> =>{
-    return serviceMetricByApplicationName(front,timeframe,"dt.service.request.count", "sum").then(it => {
+    return responseTimePercentilByApplicationName(front,timeframe,95).then(it => {
       let now = 0;
       let baseline = 0;
       if(isQueryResult(it)){
@@ -48,14 +48,14 @@ const ThroughputByFront = ({ front }: ByFrontProp) => {
 
   return (
    <KpiCore
-    kpiLabel='Throughput'
-    unitFormatter={formatter}
+    kpiLabel='Response P90'
+    unitFormatter={timeFormatter}
     getNowBaseline={(timeframe) => funcao(front, timeframe)}
     metricDirection={MetricDirection.LowerIsBetter}
-    prefixIcon={<ConnectorIcon />}
+    prefixIcon={<ClockIcon/>}
    ></KpiCore>
   );
 };
 
-export { ThroughputByFront };
+export { P90ByFront };
 

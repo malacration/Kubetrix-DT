@@ -5,7 +5,7 @@ import { FilterFrontend } from 'src/app/components/filters/FilterFrontend';
 import { ServicesByFrontEnd } from 'src/app/components/widget/services/ServicesByFrontEnd';
 import { TitleBar } from '@dynatrace/strato-components-preview/layouts';
 import { FiltersK8s } from 'src/app/components/filters/FilterK8s';
-import { ReponseTimeByFront } from 'src/app/components/widget/_front/ReponseTimeByFront';
+import { ReponseTimeByFront } from 'src/app/components/widget/_front/kpis/ReponseTimeByFront';
 import { Flex } from '@dynatrace/strato-components/layouts';
 import MultiplesKpis from 'src/app/components/widget/_front/mutiplesKpis';
 

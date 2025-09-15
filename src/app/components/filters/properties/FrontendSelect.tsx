@@ -2,7 +2,7 @@ import React, { ForwardedRef, forwardRef, useEffect, useState } from 'react';
 import { Option, SelectComponent } from '../../form/Select';
 import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
 import { getFrontends } from 'src/app/services/frontendService';
-import { useTimeFrame } from '../../context/FilterK8sContext';
+import { useFrontendsSelected, useTimeFrame } from '../../context/FilterK8sContext';
 
 
 interface FrontendSelectionProps {
@@ -17,6 +17,8 @@ export const FrontendSelection = forwardRef<HTMLDivElement, FrontendSelectionPro
 
     const timeframe = useTimeFrame()
 
+    const frontends=useFrontendsSelected()
+
     useEffect(() => {
       setLoading(true)
       getFrontends(timeframe).then(it => {
@@ -28,7 +30,7 @@ export const FrontendSelection = forwardRef<HTMLDivElement, FrontendSelectionPro
     return( 
         <div ref={ref}>
             <SelectComponent
-                defaultValue="all"
+                defaultValue={frontends}
                 options={option}
                 loading={loading}
                 clearable={false}

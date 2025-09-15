@@ -86,7 +86,6 @@ const Dashboard: React.FC<DashboardProps> & { Filter: typeof DashboardFilter } =
   const contextLastRefreshedAt = useLastRefreshedAt()
 
   const enhancedChildren = useMemo(() => {
-    console.log(contextLastRefreshedAt)
     return injectPropsRecursively(children,{ filters: filters, lastRefreshedAt: contextLastRefreshedAt },
     { onFiltersChange: setFilters, lastRefreshedAt: contextLastRefreshedAt },)
   },[children, filters, contextLastRefreshedAt]);
@@ -96,7 +95,6 @@ const Dashboard: React.FC<DashboardProps> & { Filter: typeof DashboardFilter } =
 
     const id = setInterval(() => {
       const data = new Date()
-      console.log(data)
       setContextLastRefreshedAt(data);
     }, autoRefresh);
 

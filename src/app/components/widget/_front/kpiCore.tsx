@@ -3,7 +3,7 @@ import { type ReactNode } from 'react';
 
 import { type PropsWithChildren } from 'react';
 
-import { Formatter, SingleValue, SingleValueGrid, TrendDirection } from '@dynatrace/strato-components-preview/charts';
+import { Formatter, SingleValue, SingleValueGrid, Timeseries, TrendDirection, TrendIndicatorColors } from '@dynatrace/strato-components-preview/charts';
 import { serviceMetricByApplicationName } from 'src/app/services/front/WorkloadService';
 import { getDefaultTimeframe } from '../../timeframe/DefaultTimeframe';
 import { isQueryResult } from 'src/app/services/core/GrailConverter';
@@ -22,7 +22,8 @@ import { Tooltip } from '@dynatrace/strato-components-preview/overlays';
 import { ActionButton } from '@dynatrace/strato-components-preview/layouts/app-header/ActionButton';
 import { ChartProps } from '../../filters/BarChartProps';
 import { useLastRefreshedAt, useTimeFrame } from '../../context/FilterK8sContext';
-import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
+import { Threshold, TimeframeV2 } from '@dynatrace/strato-components-preview/core';
+import { metric } from '@dynatrace-sdk/units/types/packages/util/units/src/util-convert/symbols';
 
 
 type Trend = {
@@ -31,12 +32,77 @@ type Trend = {
   label: string;
 };
 
+type PanelState = 'normal' | 'warning' | 'critical';
+
+
+const PALETTE = {
+    up: 'var(--kubetrix-positive, #22c55e)',          // verde
+    down: 'var(--kubetrix-negative, #ef4444)',        // vermelho
+    downOnCritical: 'var(--kubetrix-negative-on-critical, #f59e0b)', // âmbar
+    neutral: 'var(--kubetrix-neutral, #94a3b8)',      // cinza
+};
+
+
+function getPanelState(nowValue: number, thresholds: Threshold[]): PanelState {
+    if (!thresholds || thresholds.length === 0) return 'normal';
+
+    // Procura critical (Bad) primeiro para ser mais estrito
+    const critical = thresholds.findLast?.(() => true) ?? thresholds[thresholds.length - 1];
+    const warning  = thresholds[0];
+
+    if (critical && matchComparator(nowValue, critical)) return 'critical';
+    if (warning  && matchComparator(nowValue, warning))  return 'warning';
+    return 'normal';
+}
+
 export enum MetricDirection {
   HigherIsBetter,
   LowerIsBetter,
+  none
 }
 
-export type NowBaseline = { now: number; baseline: number };
+
+export type NowBaseline = { 
+  now: number; 
+  baseline: number,
+  sparkline? : Timeseries
+};
+
+function matchComparator(now: number, t: Threshold): boolean {
+  switch (t.comparator) {
+    case 'less-than-or-equal-to':   return now <= t.value;
+    case 'less-than':               return now <  t.value;
+    case 'greater-than-or-equal-to':return now >= t.value;
+    case 'greater-than':            return now >  t.value;
+    default: return false;
+  }
+}
+
+export function getTrendColorsAuto(
+  nowValue: number,
+  thresholdsFactory: () => Threshold[],
+  opts?: { downwardOnCritical?: 'amber' | 'white' }
+): TrendIndicatorColors {
+  const thresholds = thresholdsFactory?.() ?? [];
+  const state = getPanelState(nowValue, thresholds);
+
+  let downward: string;
+  if (state === 'critical') {
+    downward = opts?.downwardOnCritical === 'white'
+      ? 'var(--kubetrix-negative-on-critical, #ffffff)'
+      : PALETTE.downOnCritical; // âmbar (default)
+  } else {
+    downward = PALETTE.down;
+  }
+
+  return {
+    upward: PALETTE.up,
+    downward,
+    neutral: PALETTE.neutral,
+  };
+}
+
+
 
 type KpiByFrontProps = {
   kpiLabel: string;
@@ -45,9 +111,15 @@ type KpiByFrontProps = {
   warningPercent? : number;
   badPercent? : number
   metricDirection : MetricDirection
+  trendLabel? : string,
   prefixIcon?: ReactNode
   getNowBaseline: (timeframe: TimeframeV2) => Promise<NowBaseline>;
+  trendAbsolute? : boolean
+  thresholds? : Threshold[]
 };
+
+
+
 
 const KpiCore = ({ 
     kpiLabel, 
@@ -57,7 +129,9 @@ const KpiCore = ({
     neutralPercent = 5, 
     warningPercent = 30, 
     badPercent = 50,
-    prefixIcon
+    trendLabel = "Base last 21 days",
+    trendAbsolute = false,
+    
 }: KpiByFrontProps) => {
 
     const timeframe = useTimeFrame()
@@ -65,9 +139,20 @@ const KpiCore = ({
 
     const [nowValue, setNowValue] = useState<number>();
     const [baselineValue, setBaseLineValue] = useState<number | null>();
+    const [sparkline, setSparkline] = useState<Timeseries | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
 
     const getTrend = (): Trend => {
+
+        if(metricDirection == MetricDirection.none){
+          
+          return {
+            direction: (baselineValue ?? 0) > nowValue ? 'upward' : 'downward',
+            value: baselineValue ?? 0,
+            label: trendLabel,
+          };
+        }
+          
         if (
         baselineValue === null ||
         !isFinite(baselineValue) ||
@@ -99,16 +184,16 @@ const KpiCore = ({
         direction = changeIsBetter ? 'upward' : 'downward';
         }
 
-        return {
+      return {
         direction,
         value: Number.isFinite(magnitude) ? Number(magnitude.toFixed(1)) : 0,
-        label: 'Base last 21 days ',
-        };
+        label: trendLabel,
+      };
     };
 
     const thresholds = () => {
         const isHigherBetter = metricDirection == MetricDirection.HigherIsBetter;
-        if(!baselineValue)
+        if(!baselineValue || metricDirection == MetricDirection.none)
         return []
         return isHigherBetter
         ? [
@@ -137,13 +222,14 @@ const KpiCore = ({
             ];
     };
 
-
     useEffect(() => {
         setLoading(true)
         getNowBaseline(timeframe).then(it => {
             setNowValue(it.now)
             setBaseLineValue(it.baseline)
+            setSparkline(it.sparkline ?? null)
             setLoading(false)
+
         })
     },[timeframe,lastRefreshedAt]);
 
@@ -158,17 +244,22 @@ const KpiCore = ({
             color={Colors.Charts.Threshold.Good.Default}
             thresholds={thresholds()}
             loading={loading}
-            prefixIcon={prefixIcon}
+            // prefixIcon={prefixIcon}
         >
-            <SingleValue.Trend
-                direction={getTrend().direction}
-                formatter={{
-                input: units.percentage.percent,
-                output: units.percentage.percent,
-                }}
-                value={getTrend().value}
-                label={getTrend().label}
-            />
+          {sparkline != null ? <SingleValue.Sparkline data={sparkline}> </SingleValue.Sparkline>: <></> }
+
+          <SingleValue.Trend
+              direction={getTrend().direction}
+              formatter={ trendAbsolute || metricDirection == MetricDirection.none ? unitFormatter :
+                {
+                  input: units.percentage.percent,
+                  output: units.percentage.percent,
+                }
+              }
+              value={trendAbsolute ? baselineValue : getTrend().value}
+              label={getTrend().label}
+              colorsOverride={getTrendColorsAuto(nowValue,thresholds,{ downwardOnCritical: 'amber' })}
+          />
         </SingleValue>
     );
 };

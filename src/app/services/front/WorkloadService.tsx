@@ -1,6 +1,6 @@
 import { TimeframeV2 } from "@dynatrace/strato-components-preview/core"
 import { clientClassic, MetricResult } from "../core/MetricsClientClassic"
-import { classicBaseLine } from "../baseLineService";
+import { classicBaseLine } from "../builtin/baseLineService";
 import { GrailDqlQuery } from "../core/GrailClient";
 import { QueryResult } from "@dynatrace-sdk/client-query";
 import { pickResolution } from "src/app/components/timeframe/resolution";
@@ -78,7 +78,6 @@ export function  responseTimePercentilByApplicationName(
         | fieldsKeep timeframe, interval, baseline, baselineScalar
       ]
   `
-  console.log(dql)
   return GrailDqlQuery(dql,timeFrame)
 }
 

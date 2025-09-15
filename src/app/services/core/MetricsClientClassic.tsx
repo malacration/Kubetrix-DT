@@ -1,5 +1,5 @@
 
-import { MetricData, metricsClient } from "@dynatrace-sdk/client-classic-environment-v2";
+import { MetricData, metricsClient, MetricSeriesCollection } from "@dynatrace-sdk/client-classic-environment-v2";
 // import { Timeseries, TimeseriesChartProps } from "@dynatrace/strato-components-preview";
 import { TimeseriesChartProps, Timeseries, HoneycombTileNumericData } from '@dynatrace/strato-components-preview/charts';
 
@@ -14,21 +14,22 @@ export async function clientClassic(
   metricSelector: string,
   timeFrame? : TimeframeV2,
   resolution? : string,
+  entitySelector?: string
 ): Promise<MetricResult> {
   
   const now = new Date();
   const toTime = timeFrame?.to.absoluteDate ? new Date(timeFrame.to.absoluteDate) : now;
   const fromTime = timeFrame?.from.absoluteDate ? new Date(timeFrame.from.absoluteDate) : new Date(toTime.getTime() - 2 * 60 * 60 * 1000);
 
-  // console.log(metricSelector)
 
   return metricsClient.query({
+    entitySelector,
     metricSelector,
     acceptType: "application/json; charset=utf-8",
     from: fromTime.toISOString(),
     to: toTime.toISOString(),
     resolution: resolution
-  }).then(it => Object.assign(new MetricResult(it), it));
+  }).then(it => Object.assign(new MetricResult(it,metricSelector,entitySelector), it));
 }
 
 
@@ -51,7 +52,12 @@ export async function getMetricUnit(metricKey: string): Promise<string | undefin
 
 export class MetricResult {
   
-  constructor(private response: MetricData) {}
+  constructor(
+    public response: MetricData,
+    public baseQuery : string,
+    public entitySelector? : string) {
+
+    }
 
   raw() {
     return this.response;
@@ -73,21 +79,41 @@ export class MetricResult {
   timestampsOnly() {
     return this.response.result?.[0]?.data?.map((item: any) => item.timestamps) ?? [];
   }
-
-  getTimeSerie() : Array<Timeseries> {
-    return []
-  }
+  
   unitCache = new Map<string, string>();
 
+  getByMetric(searchMetric : string): MetricSeriesCollection | undefined {
+    const result = this.response?.result
+      ?.filter(it =>      String(it.metricId ?? '').includes(searchMetric))
+      ?.at(0)
+    return result;
+  }
 
-  getFirstValueOfFirstMetric(): | { value: number; timestamp?: number } | undefined {
-    const serie = this.response?.result?.[0]?.data?.[0];
+  getFirstValueByMetric(searchMetric : string): | { value: number; timestamp?: number, metricId : string } | undefined {
+    const result = this.response?.result
+      ?.filter(it =>      String(it.metricId ?? '').includes(searchMetric))
+      ?.at(0)
+    const serie = result?.data?.[0];
     if (!serie?.values?.length) return undefined;
 
     for (let i = 0; i < serie.values.length; i++) {
       const v = serie.values[i];
       if (v != null && Number.isFinite(v)) {
-        return { value: v, timestamp: serie.timestamps?.[i] };
+        return { value: v, timestamp: serie.timestamps?.[i], metricId : result.metricId };
+      }
+    }
+    return undefined;
+  }
+
+  getFirstValueOfFirstMetric(): | { value: number; timestamp?: number, metricId : string } | undefined {
+    const result = this.response?.result?.[0]
+    const serie = result?.data?.[0];
+    if (!serie?.values?.length) return undefined;
+
+    for (let i = 0; i < serie.values.length; i++) {
+      const v = serie.values[i];
+      if (v != null && Number.isFinite(v)) {
+        return { value: v, timestamp: serie.timestamps?.[i], metricId : result.metricId };
       }
     }
     return undefined;
@@ -161,3 +187,61 @@ const resolutionToMs = (res: string): number => {
   const mult = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 } as const;
   return Number(num) * mult[unit as keyof typeof mult];
 };
+
+
+export class MetricSeriesCollectionHandl {
+
+  /** Média dos valores numéricos (ignora null/NaN). */
+  getAvg(series: MetricSeriesCollection): number | null {
+    const { sum, count } = this.#fold(series);
+    return count ? sum / count : 0;
+  }
+
+  /** Soma dos valores numéricos (ignora null/NaN). */
+  getSum(series: MetricSeriesCollection): number | null {
+    const { sum, count } = this.#fold(series);
+    return count ? sum : 0;
+  }
+
+  /** Último valor global (maior timestamp entre todas as séries). */
+  getLast(series: MetricSeriesCollection): number | null {
+    let bestTs = -Infinity;
+    let bestVal: number | null = null;
+
+    for (const s of series?.data ?? []) {
+      const ts: number[] | undefined = (s as any)?.timestamps;
+      const vals: Array<number | null | undefined> | undefined = (s as any)?.values;
+      if (!ts || !vals || ts.length === 0) continue;
+
+      // varre de trás pra frente para achar o último não-nulo desta série
+      for (let i = ts.length - 1; i >= 0; i--) {
+        const v = vals[i];
+        const t = ts[i] ?? -Infinity;
+        if (v != null && Number.isFinite(v) && t > bestTs) {
+          bestTs = t;
+          bestVal = Number(v);
+          break;
+        }
+      }
+    }
+    return bestVal;
+  }
+
+  // ----------------- helpers -----------------
+  #fold(series: MetricSeriesCollection): { sum: number; count: number } {
+    let sum = 0;
+    let count = 0;
+
+    for (const s of series?.data ?? []) {
+      const vals: Array<number | null | undefined> | undefined = (s as any)?.values;
+      if (!vals) continue;
+      for (const v of vals) {
+        if (v != null && Number.isFinite(v)) {
+          sum += Number(v);
+          count++;
+        }
+      }
+    }
+    return { sum, count };
+  }
+}

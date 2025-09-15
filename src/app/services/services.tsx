@@ -54,7 +54,7 @@ export function getServices(cluster,namespace,workload,timeframe) : Promise<Quer
             | fields currCount = v, baseCount = (v_7d+v_14d+v_21d)/3, v_7d, v_14d, v_21d, dt.entity.service
         ], sourceField:id, lookupField:dt.entity.service, fields:{currCount,baseCount}, executionOrder:leftFirst
     `
-    console.log(dql)
+    // console.log(dql)
     return GrailDqlQuery(dql,timeframe);
 }
 

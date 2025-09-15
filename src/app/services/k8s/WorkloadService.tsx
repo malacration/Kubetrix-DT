@@ -1,6 +1,6 @@
 import { TimeframeV2 } from "@dynatrace/strato-components-preview/core"
 import { clientClassic, MetricResult } from "../core/MetricsClientClassic"
-import { classicBaseLine } from "../baseLineService";
+import { classicBaseLine } from "../builtin/baseLineService";
 import { GrailDqlQuery } from "../core/GrailClient";
 import { QueryResult } from "@dynatrace-sdk/client-query";
 import { pickResolution } from "src/app/components/timeframe/resolution";
@@ -46,8 +46,10 @@ export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeF
   `
   if(allFilters == "")
     filter = ""
+
   const intervalNow = pickResolution(0,timeFrame)
   const intervalBase = pickResolution(21,timeFrame)
+
   const dql = `
     timeseries 
       now=avg(dt.service.request.response_time), interval:${intervalNow}
