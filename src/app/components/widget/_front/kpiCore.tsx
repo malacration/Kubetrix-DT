@@ -16,14 +16,8 @@ import {
   units,
 } from '@dynatrace-sdk/units';
 import Colors from '@dynatrace/strato-design-tokens/colors';
-import { Value } from '@dynatrace/strato-components-preview/charts/single-value-grid/slots/Value';
-import { ClockIcon, ResearchIcon } from '@dynatrace/strato-icons';
-import { Tooltip } from '@dynatrace/strato-components-preview/overlays';
-import { ActionButton } from '@dynatrace/strato-components-preview/layouts/app-header/ActionButton';
-import { ChartProps } from '../../filters/BarChartProps';
 import { useLastRefreshedAt, useTimeFrame } from '../../context/FilterK8sContext';
 import { Threshold, TimeframeV2 } from '@dynatrace/strato-components-preview/core';
-import { metric } from '@dynatrace-sdk/units/types/packages/util/units/src/util-convert/symbols';
 
 
 type Trend = {
@@ -36,9 +30,9 @@ type PanelState = 'normal' | 'warning' | 'critical';
 
 
 const PALETTE = {
-    up: 'var(--kubetrix-positive, #22c55e)',          // verde
-    down: 'var(--kubetrix-negative, #ef4444)',        // vermelho
-    downOnCritical: 'var(--kubetrix-negative-on-critical, #f59e0b)', // âmbar
+    up: Colors.Charts.Threshold.Good.Default,
+    down: Colors.Charts.Threshold.Bad.Default,
+    downOnCritical: Colors.Text.Critical.OnAccent.Default,//'var(--kubetrix-negative-on-critical, #f59e0b)', // âmbar
     neutral: 'var(--kubetrix-neutral, #94a3b8)',      // cinza
 };
 
@@ -117,8 +111,6 @@ type KpiByFrontProps = {
   trendAbsolute? : boolean
   thresholds? : Threshold[]
 };
-
-
 
 
 const KpiCore = ({ 
@@ -200,24 +192,24 @@ const KpiCore = ({
             { 
                 comparator: 'less-than-or-equal-to', 
                 value: baselineValue-(baselineValue*warningPercent/100), 
-                color: Colors.Charts.Threshold.Warning.Default 
+                color: Colors.Background.Container.Warning.Accent
             },
             { 
                 comparator: 'less-than-or-equal-to', 
                 value: baselineValue-(baselineValue*badPercent/100),    
-                color: Colors.Charts.Threshold.Bad.Default 
+                color: Colors.Background.Container.Critical.Accent
             },
             ]
         : [
             { 
                 comparator: 'greater-than-or-equal-to', 
                 value: baselineValue+(baselineValue*warningPercent/100), 
-                color: Colors.Charts.Threshold.Warning.Default 
+                color: Colors.Background.Container.Warning.Accent 
             },
             { 
                 comparator: 'greater-than-or-equal-to', 
                 value: baselineValue+(baselineValue*badPercent/100),    
-                color: Colors.Charts.Threshold.Bad.Default 
+                color: Colors.Background.Container.Critical.Accent 
             },
             ];
     };
@@ -241,12 +233,12 @@ const KpiCore = ({
             label={kpiLabel}
             applyThresholdBackground={true}
             // prefixIcon={<ResearchIcon />}
-            color={Colors.Charts.Threshold.Good.Default}
+            color={Colors.Background.Container.Success.Default}
             thresholds={thresholds()}
             loading={loading}
             // prefixIcon={prefixIcon}
         >
-          {sparkline != null ? <SingleValue.Sparkline data={sparkline}> </SingleValue.Sparkline>: <></> }
+          {sparkline != null ? <SingleValue.Sparkline data={sparkline} showContextValues={true}> </SingleValue.Sparkline>: <></> }
 
           <SingleValue.Trend
               direction={getTrend().direction}

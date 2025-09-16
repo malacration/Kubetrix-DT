@@ -192,13 +192,13 @@ const resolutionToMs = (res: string): number => {
 export class MetricSeriesCollectionHandl {
 
   /** Média dos valores numéricos (ignora null/NaN). */
-  getAvg(series: MetricSeriesCollection): number | null {
+  getAvg(series?: MetricSeriesCollection): number {
     const { sum, count } = this.#fold(series);
     return count ? sum / count : 0;
   }
 
   /** Soma dos valores numéricos (ignora null/NaN). */
-  getSum(series: MetricSeriesCollection): number | null {
+  getSum(series: MetricSeriesCollection): number {
     const { sum, count } = this.#fold(series);
     return count ? sum : 0;
   }
@@ -228,7 +228,7 @@ export class MetricSeriesCollectionHandl {
   }
 
   // ----------------- helpers -----------------
-  #fold(series: MetricSeriesCollection): { sum: number; count: number } {
+  #fold(series?: MetricSeriesCollection): { sum: number; count: number } {
     let sum = 0;
     let count = 0;
 

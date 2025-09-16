@@ -14,7 +14,7 @@ import { KpiCore, MetricDirection, NowBaseline } from '../kpiCore';
 import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
 import { AnalyticsIcon, ConnectorIcon } from '@dynatrace/strato-icons';
 import { builtinThroughputUserActionByFront } from 'src/app/services/front/builtinUserActionService';
-import { classicBaseLine2, classicBaseLine3 } from 'src/app/services/builtin/baseLineService';
+import { classicBaseLine2, classicBaseLineBy } from 'src/app/services/builtin/baseLineService';
 import { MetricSeriesCollectionHandl } from 'src/app/services/core/MetricsClientClassic';
 
 
@@ -34,7 +34,7 @@ const ThroughputByFront = ({ front }: ByFrontProp) => {
     const handdle = new MetricSeriesCollectionHandl()
     return builtinThroughputUserActionByFront(front,timeframe).then(it => {
       const now = handdle.getSum(it.getByMetric("count.xhr"))+handdle.getSum(it.getByMetric("count.load"));
-      return classicBaseLine3(it,timeframe,"","").then(it => {
+      return classicBaseLineBy(it,timeframe,"","").then(it => {
         const metric = it.getByMetric("xhr")
         return { now, baseline: handdle.getSum(metric) }
       })

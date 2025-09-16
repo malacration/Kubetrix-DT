@@ -1,18 +1,21 @@
-/**
- * Expande grupos entre parênteses, ex.: "a.(b,c).d" -> ["a.b.d", "a.c.d"]
- * Se não houver parênteses, retorna [input].
- */
+const IGNORE_GROUP_AFTER = new Set<string>([
+  'rollup', 'fold', 'splitBy', 'timeshift', 'default',
+  // adicione aqui se precisar: 'limit', 'sort', 'filter', ...
+]);
+
+
 export function expandGroups(input: string): string[] {
-  // Resultado parcial enquanto percorremos a string
+  if (!input.includes('(')) return [input];
+
   let results: string[] = [''];
   let i = 0;
-
   const n = input.length;
+
   while (i < n) {
     const ch = input[i];
 
     if (ch !== '(') {
-      // Anexa trecho literal até o próximo '(' (ou fim)
+      // Copia literal até o próximo '(' (ou fim)
       const next = input.indexOf('(', i);
       const literal = input.slice(i, next === -1 ? n : next);
       results = results.map(prefix => prefix + literal);
@@ -24,18 +27,33 @@ export function expandGroups(input: string): string[] {
     let j = i + 1;
     let depth = 1;
     while (j < n && depth > 0) {
-      if (input[j] === '(') depth++;
-      else if (input[j] === ')') depth--;
+      const c = input[j];
+      if (c === '(') depth++;
+      else if (c === ')') depth--;
       j++;
     }
     if (depth !== 0) {
       throw new Error('Parênteses desbalanceados na string de entrada.');
     }
 
-    // Conteúdo interno sem os parênteses
+    // Conteúdo interno (sem os parênteses)
     const inside = input.slice(i + 1, j - 1);
 
-    // Divide por vírgulas de nível superior (respeitando possíveis aninhamentos)
+    // Detecta token imediatamente antes do '(' (ex.: "rollup" em ":rollup(any)")
+    let t = i - 1;
+    while (t >= 0 && /\s/.test(input[t])) t--;
+    let start = t;
+    while (start >= 0 && /[A-Za-z0-9_]/.test(input[start])) start--;
+    const prevToken = input.slice(start + 1, t + 1).toLowerCase();
+
+    if (prevToken && IGNORE_GROUP_AFTER.has(prevToken)) {
+      const literalParens = `(${inside})`;
+      results = results.map(prefix => prefix + literalParens);
+      i = j; // segue após ')'
+      continue;
+    }
+
+    // Divide por vírgulas de nível superior (respeitando aninhamentos)
     const choices: string[] = [];
     {
       let buf = '';

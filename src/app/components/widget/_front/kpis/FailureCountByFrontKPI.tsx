@@ -13,6 +13,9 @@ import { useTimeFrame } from '../../../context/FilterK8sContext';
 import { KpiCore, MetricDirection, NowBaseline } from '../kpiCore';
 import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
 import { CriticalIcon, GrailIcon, HttpIcon } from '@dynatrace/strato-icons';
+import { builtinErrosCountByFront } from 'src/app/services/front/builtinUserActionService';
+import { MetricSeriesCollectionHandl } from 'src/app/services/core/MetricsClientClassic';
+import { classicBaseLineBy } from 'src/app/services/builtin/baseLineService';
 
 
 type ByFrontProp = {
@@ -27,21 +30,14 @@ const FailureCountByFrontKPI = ({ front }: ByFrontProp) => {
   };
   
   const funcao = async (front: string, timeframe: TimeframeV2): Promise<NowBaseline> =>{
-    return serviceMetricByApplicationName(front,timeframe,"dt.service.request.failure_count", "sum").then(it => {
-      let now = 0;
-      let baseline = 0;
-      if(isQueryResult(it)){
-        it.records.forEach(element => {
-          if(element?.nowScalar){
-            now = Number(element?.nowScalar ?? 0)
-          }
-            
-          if(element?.baselineScalar){
-            baseline = Number(element?.baselineScalar ?? 0)
-          }
-        });
-      }
-      return { now, baseline }
+    return builtinErrosCountByFront(front,timeframe).then(metricResult => {
+      console.log(metricResult.baseQuery)
+      const handdle = new MetricSeriesCollectionHandl()
+      const now = handdle.getSum(metricResult.getByMetric("countOfErrors"));
+      return classicBaseLineBy(metricResult,timeframe,"","").then(base => {
+            const baseline = handdle.getSum(base.getByMetric("countOfErrors"))
+            return { now : now, baseline : baseline}
+      })
     })
   }
 
@@ -51,6 +47,7 @@ const FailureCountByFrontKPI = ({ front }: ByFrontProp) => {
     unitFormatter={formatter}
     getNowBaseline={(timeframe) => funcao(front, timeframe)}
     metricDirection={MetricDirection.LowerIsBetter}
+    trendAbsolute={true}
     prefixIcon={<CriticalIcon />}
    ></KpiCore>
   );
