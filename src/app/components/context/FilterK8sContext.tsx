@@ -3,7 +3,6 @@ import {
   Dispatch,
   ReactElement,
   SetStateAction,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -127,7 +126,12 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
       typeof upd === "function"
         ? (upd as (prev: number) => number)(autoRefreshMsRaw)
         : upd;
+        
         setAutoRefreshMsRaw(next ?? 20000);
+        if(next != autoRefreshMsRaw){
+          setLastRefreshedAt(new Date())
+          console.log("parametro mudou")
+        }
   };
 
   // TIMEFRAME (state local; se quiser, dá pra serializar em query depois)

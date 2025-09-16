@@ -22,7 +22,7 @@ import { ActionButton } from '@dynatrace/strato-components-preview/layouts/app-h
 import { ChartProps } from '../../../filters/BarChartProps';
 import { useLastRefreshedAt, useTimeFrame } from '../../../context/FilterK8sContext';
 import { KpiCore, MetricDirection, NowBaseline } from '../kpiCore';
-import { TimeframeV2 } from '@dynatrace/strato-components-preview';
+import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
 
 
 type Trend = {
@@ -43,9 +43,6 @@ const ReponseTimeByFront = ({ front }: KpiByFrontProps) => {
     maximumFractionDigits: 1,
     cascade: 1
   };
-
-  const timeframe = useTimeFrame()
-  const lastRefreshedAt = useLastRefreshedAt()
 
   const funcao = async (front: string, timeframe: TimeframeV2): Promise<NowBaseline> =>{
     return serviceMetricByApplicationName(front,timeframe,"dt.service.request.response_time","avg").then(it => {

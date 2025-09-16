@@ -17,7 +17,6 @@ interface DashboardProps {
 
 export interface FilterBarProps {
   onFiltersChange?: (f: FilterItemValues) => void;
-  lastRefreshedAt : Date
 }
 
 function DashboardFilter(
@@ -77,7 +76,7 @@ function injectPropsRecursively(
 }
 
 const Dashboard: React.FC<DashboardProps> & { Filter: typeof DashboardFilter } = ({
-  children, defaultRefreshIntervalMs = 60000,
+  children,
 }) => {
   const [filters, setFilters] = useState<FilterItemValues>({});
 
@@ -87,7 +86,7 @@ const Dashboard: React.FC<DashboardProps> & { Filter: typeof DashboardFilter } =
 
   const enhancedChildren = useMemo(() => {
     return injectPropsRecursively(children,{ filters: filters, lastRefreshedAt: contextLastRefreshedAt },
-    { onFiltersChange: setFilters, lastRefreshedAt: contextLastRefreshedAt },)
+    { onFiltersChange: setFilters,},)
   },[children, filters, contextLastRefreshedAt]);
 
   useEffect(() => {

@@ -221,9 +221,8 @@ const KpiCore = ({
             setBaseLineValue(it.baseline)
             setSparkline(it.sparkline ?? null)
             setLoading(false)
-
         })
-    },[timeframe,lastRefreshedAt]);
+    },[timeframe]);
 
     return (
         <SingleValue

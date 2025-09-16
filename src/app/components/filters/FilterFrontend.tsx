@@ -56,11 +56,10 @@ export const FilterFrontend = ({ onFiltersChange }: FilterBarProps) => {
           setKpis(props.kpis.value)
         }
 
-
         const maybeTime = Number(props.time?.value);
-        if (maybeTime && !Number.isNaN(maybeTime))
+        if (maybeTime && !Number.isNaN(maybeTime)){
           setAutoRefreshMs(maybeTime);
-
+        }
         setTimeframe(props.timeframe.value)
       }}
 
