@@ -13,7 +13,7 @@ import { useTimeFrame } from '../../../context/FilterK8sContext';
 import { KpiCore, MetricDirection, NowBaseline } from '../kpiCore';
 import { TimeframeV2 } from '@dynatrace/strato-components-preview/core';
 import { CriticalIcon, GrailIcon, HttpIcon } from '@dynatrace/strato-icons';
-import { builtinErrosCountByFront } from 'src/app/services/front/builtinUserActionService';
+import { builtinErrosRateByFront } from 'src/app/services/front/builtinUserActionService';
 import { MetricSeriesCollectionHandl } from 'src/app/services/core/MetricsClientClassic';
 import { classicBaseLineBy } from 'src/app/services/builtin/baseLineService';
 
@@ -24,18 +24,18 @@ type ByFrontProp = {
 const FailureCountByFrontKPI = ({ front }: ByFrontProp) => {
 
   const formatter: FormatOptions<Unit, ConvertibleUnit> = {
-    input: units.amount.one,
+    input: units.percentage.percent,
     maximumFractionDigits: 1,
     cascade: 1
   };
   
   const funcao = async (front: string, timeframe: TimeframeV2): Promise<NowBaseline> =>{
-    return builtinErrosCountByFront(front,timeframe).then(metricResult => {
+    return builtinErrosRateByFront(front,timeframe).then(metricResult => {
       console.log(metricResult.baseQuery)
       const handdle = new MetricSeriesCollectionHandl()
-      const now = handdle.getSum(metricResult.getByMetric("countOfErrors"));
+      const now = handdle.getLast(metricResult.getByMetric("countOfErrors"));
       return classicBaseLineBy(metricResult,timeframe,"","").then(base => {
-            const baseline = handdle.getSum(base.getByMetric("countOfErrors"))
+            const baseline = handdle.getLast(base.getByMetric("countOfErrors"))
             return { now : now, baseline : baseline}
       })
     })
@@ -43,12 +43,15 @@ const FailureCountByFrontKPI = ({ front }: ByFrontProp) => {
 
   return (
    <KpiCore
-    kpiLabel='Failure Count'
+    kpiLabel='Failure Rate'
     unitFormatter={formatter}
     getNowBaseline={(timeframe) => funcao(front, timeframe)}
     metricDirection={MetricDirection.LowerIsBetter}
     trendAbsolute={true}
     prefixIcon={<CriticalIcon />}
+    warningPercent={40}
+    badPercent={70}
+
    ></KpiCore>
   );
 };

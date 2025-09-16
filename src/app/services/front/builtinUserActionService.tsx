@@ -34,8 +34,15 @@ export function builtinApdexByFront(frontName : string, timeframe? : TimeframeV2
     return clientClassic(querysBymetric,timeframe,undefined,entrySelection)
 }
 
-export function builtinErrosCountByFront(frontName : string, timeframe? : TimeframeV2) {
+export function builtinErrosRateByFront(frontName : string, timeframe? : TimeframeV2) {
     const entrySelection = `type(APPLICATION_METHOD),fromRelationship.isApplicationMethodOf(type(APPLICATION),entityName.equals(${frontName}))`
-    const querysBymetric = "builtin:apps.web.action.countOfErrors:splitBy():fold"
+    const querysBymetric = `
+        builtin:apps.web.action.countOfErrors:splitBy():fold
+        /
+        (
+            builtin:apps.web.action.count.load.browser:splitBy():fold
+            +
+            builtin:apps.web.action.count.xhr.browser:splitBy():fold
+        )`
     return clientClassic(querysBymetric,timeframe,undefined,entrySelection)
 }
