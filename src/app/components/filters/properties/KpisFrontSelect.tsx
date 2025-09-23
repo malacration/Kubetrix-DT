@@ -11,7 +11,10 @@ export const KpisFrontSelection = forwardRef<HTMLDivElement, KpisFrontSelectionP
   ({ onChange },ref: ForwardedRef<HTMLDivElement> ) => {
     
     const options : Array<Option> = [
-      new Option("Action Duration","duration"),
+      new Option("Média (avg)","duration"),
+      new Option("Tipico (p50)","duration50"),
+      new Option("10% Piores (p90)","duration90"),
+      new Option("Extremos (p99)","duration99"),
       new Option("Throughput","throughput"),
       new Option("Failure Count","failure-Count"),
       new Option("Apdex","apdex"),

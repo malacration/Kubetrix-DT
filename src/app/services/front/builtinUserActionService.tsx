@@ -3,10 +3,13 @@ import { clientClassic } from "../core/MetricsClientClassic";
 import { pickResolution } from "src/app/components/timeframe/resolution";
 
 
-export function builtinDurationUserActionByFront(frontName : string, timeframe? : TimeframeV2) {
+export function builtinDurationUserActionByFront(
+    frontName : string, timeframe? : TimeframeV2, 
+    agreggation : "median" | "avg" | "percentile(90)" | "percentile(99)" = "median"
+) {
     const entrySelection = `type(APPLICATION),entityName.equals(${frontName})`
-    const xhr = "builtin:apps.web.actionDuration.xhr.browser:splitBy()"
-    const load = "builtin:apps.web.actionDuration.load.browser:splitBy()"
+    const xhr = `builtin:apps.web.actionDuration.xhr.browser:${agreggation}:splitBy()`
+    const load = `builtin:apps.web.actionDuration.load.browser:${agreggation}:splitBy()`
 
     const loadCount = "builtin:apps.web.actionCount.load.browser:splitBy()"
     const xhrCount = "builtin:apps.web.actionCount.xhr.browser:splitBy()"

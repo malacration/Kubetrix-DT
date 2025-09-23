@@ -20,9 +20,10 @@ import { pickResolution } from 'src/app/components/timeframe/resolution';
 
 type ByFrontProp = {
   front: string;
+  agreggation : "median" | "avg" | "percentile(90)" | "percentile(99)"
 };
 
-const UserActionTime = ({ front }: ByFrontProp) => {
+const UserActionTime = ({ front, agreggation }: ByFrontProp) => {
 
   const timeFormatter: FormatOptions<Unit, ConvertibleUnit> = {
     input: units.time.millisecond,
@@ -31,7 +32,7 @@ const UserActionTime = ({ front }: ByFrontProp) => {
   
   const funcao = async (front: string, timeframe: TimeframeV2): Promise<NowBaseline> =>{
     const handdle = new MetricSeriesCollectionHandl()
-    return builtinDurationUserActionByFront(front,timeframe).then(metricResult => {
+    return builtinDurationUserActionByFront(front,timeframe,agreggation).then(metricResult => {
       return classicBaseLineBy(metricResult,timeframe,"","",3).then(base => {
         return { 
           now : handdle.getAvg(metricResult.getByMetric("xhr")), 
@@ -41,9 +42,24 @@ const UserActionTime = ({ front }: ByFrontProp) => {
     })
   }
 
+  const titulo = () =>{
+    switch (agreggation) {
+      case "median":
+        return "Típico (p50)";
+      case "avg":
+        return "Média (avg)";
+      case "percentile(90)":
+        return "10% piores (p90)";
+      case "percentile(99)":
+        return "Extremos (p99)";
+      default:
+        return "Action Duration";
+  }
+  }
+
   return (
    <KpiCore
-      kpiLabel='Action Duration'
+      kpiLabel={titulo()}
       unitFormatter={timeFormatter}
       getNowBaseline={(timeframe) => funcao(front, timeframe)}
       metricDirection={MetricDirection.LowerIsBetter}

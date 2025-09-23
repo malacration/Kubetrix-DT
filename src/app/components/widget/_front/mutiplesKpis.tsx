@@ -50,10 +50,34 @@ const MultiplesKpis = () => {
                         <Flex className="kdt-badge">
                             <h4 className="kdt-badge__title">{frontend}</h4>
                         </Flex>
-                        { 
+                        {
+                            kpis.findIndex(it => it == "duration50") > -1 ? 
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <UserActionTime front={frontend} agreggation='median' />
+                            </Flex>
+                            : <></>
+                        }
+                        
+                        {
                             kpis.findIndex(it => it == "duration") > -1 ? 
                             <Flex padding={0} margin={0} className="kdt-content">
-                                <UserActionTime front={frontend} />
+                                <UserActionTime front={frontend} agreggation='avg' />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "duration90") > -1 ? 
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <UserActionTime front={frontend} agreggation='percentile(90)' />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "duration99") > -1 ? 
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <UserActionTime front={frontend} agreggation='percentile(99)' />
                             </Flex>
                             : <></>
                         }
