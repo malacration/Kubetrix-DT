@@ -119,12 +119,12 @@ export class MetricResult {
     return undefined;
   }
 
-  async metricDataToTimeseries(defaultName? : string): Promise<Timeseries[]> {
+  async metricDataToTimeseries(defaultName? : string, unitCache? : undefined | string): Promise<Timeseries[]> {
     const seriesMap = new Map<string, Timeseries>();
     const windowMs = resolutionToMs(this.response.resolution ?? '1m');
 
     for (const collection of this.response.result) {
-      const unit = await getMetricUnit(collection.metricId);
+      const unit = unitCache? unitCache :  await getMetricUnit(collection.metricId);
       for (const ms of collection.data) {
         const hasDims = ms.dimensionMap && Object.keys(ms.dimensionMap).length > 0;
 

@@ -4,12 +4,12 @@ import { pickResolution } from "src/app/components/timeframe/resolution";
 
 
 export function builtinDurationUserActionByFront(frontName : string, timeframe? : TimeframeV2) {
-    const entrySelection = `type(APPLICATION_METHOD),fromRelationship.isApplicationMethodOf(type(APPLICATION),entityName.equals(${frontName}))`
-    const xhr = "builtin:apps.web.action.duration.xhr.browser:splitBy()"
-    const load = "builtin:apps.web.action.duration.load.browser:splitBy()"
+    const entrySelection = `type(APPLICATION),entityName.equals(${frontName})`
+    const xhr = "builtin:apps.web.actionDuration.xhr.browser:splitBy()"
+    const load = "builtin:apps.web.actionDuration.load.browser:splitBy()"
 
-    const loadCount = "builtin:apps.web.action.count.load.browser:splitBy()"
-    const xhrCount = "builtin:apps.web.action.count.xhr.browser:splitBy()"
+    const loadCount = "builtin:apps.web.actionCount.load.browser:splitBy()"
+    const xhrCount = "builtin:apps.web.actionCount.xhr.browser:splitBy()"
 
     const num = `((${xhr}*${xhrCount}):fold(sum) + (${load}*${loadCount}):fold(sum))`
 
@@ -22,8 +22,8 @@ export function builtinDurationUserActionByFront(frontName : string, timeframe? 
 }
 
 export function builtinThroughputUserActionByFront(frontName : string, timeframe? : TimeframeV2) {
-    const entrySelection = `type(APPLICATION_METHOD),fromRelationship.isApplicationMethodOf(type(APPLICATION),entityName.equals(${frontName}))`
-    const querysBymetric = "builtin:apps.web.action.count.(xhr,load).browser:splitBy():sum"
+    const entrySelection = `type(APPLICATION),entityName.equals(${frontName})`
+    const querysBymetric = "builtin:apps.web.actionCount.(xhr,load).browser:splitBy():sum"
     return clientClassic(querysBymetric,timeframe,undefined,entrySelection)
 }
 
@@ -32,17 +32,17 @@ export function builtinApdexByFront(frontName : string, timeframe? : TimeframeV2
     const entrySelection = `type(APPLICATION_METHOD),fromRelationship.isApplicationMethodOf(type(APPLICATION),entityName.equals(${frontName}))`
     const querysBymetric = "builtin:apps.web.action.apdex:splitBy():fold(avg)"
     return clientClassic(querysBymetric,timeframe,undefined,entrySelection)
-}
+} 
 
 export function builtinErrosRateByFront(frontName : string, timeframe? : TimeframeV2) {
-    const entrySelection = `type(APPLICATION_METHOD),fromRelationship.isApplicationMethodOf(type(APPLICATION),entityName.equals(${frontName}))`
+    const entrySelection = `type(APPLICATION),entityName.equals(${frontName})`
     const querysBymetric = `
-        builtin:apps.web.action.countOfErrors:splitBy():fold
+        builtin:apps.web.countOfErrors:splitBy():fold
         /
         (
-            builtin:apps.web.action.count.load.browser:splitBy():fold
+            builtin:apps.web.actionCount.load.browser:splitBy():fold
             +
-            builtin:apps.web.action.count.xhr.browser:splitBy():fold
+            builtin:apps.web.actionCount.xhr.browser:splitBy():fold
         )`
     return clientClassic(querysBymetric,timeframe,undefined,entrySelection)
 }

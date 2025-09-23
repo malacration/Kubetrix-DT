@@ -115,25 +115,28 @@ export function serviceWorkload(metricName : string,
   $workload?, 
   timeFrame? : TimeframeV2,
   extra? : string,
-  isTimeshift = false) : Promise<MetricResult>{
+  isTimeshift = false,
+  plusResolution = 0) : Promise<MetricResult>{
 
-  let clusterFilter = `in("dt.entity.service", entitySelector("type(~"SERVICE~"),toRelationship.isClusterOfService(type(~"KUBERNETES_CLUSTER~"),entityName.equals(~"${$kubernetsCluster}~"))"))`
-  if(!$kubernetsCluster || $kubernetsCluster == "all")
+  let clusterFilter = `toRelationship.isClusterOfService(type("KUBERNETES_CLUSTER"),entityName.equals("${$kubernetsCluster}"))`
+  if(!$kubernetsCluster || $kubernetsCluster == "all"){
     clusterFilter = ''
+  }
+    
 
-  let namespaceFilter = `in("dt.entity.service", entitySelector("type(~"SERVICE~"),toRelationship.isNamespaceOfService(type(~"CLOUD_APPLICATION_NAMESPACE~"),entityName.equals(~"${$Namespace}~"))"))`
+  let namespaceFilter = `toRelationship.isNamespaceOfService(type("CLOUD_APPLICATION_NAMESPACE"),entityName.equals("${$Namespace}"))`
   if(!$Namespace || $Namespace == "all")
     namespaceFilter = ''
 
   
-  let workloadFilter = `in("dt.entity.service", entitySelector("type(~"SERVICE~"),fromRelationship.isServiceOf(type(~"CLOUD_APPLICATION~"),entityName.equals(~"${$workload}~"))"))`
+  let workloadFilter = `fromRelationship.isServiceOf(type("CLOUD_APPLICATION"),entityName.equals("${$workload}"))`
   if(!$workload || $workload == "all")
     workloadFilter = ''
 
   const allFilters = [clusterFilter, namespaceFilter, workloadFilter].filter(f => f !== '').join(',');
-  let filter = ':filter(and('+allFilters+'))';
+  let entrySelector : undefined | string = `type("SERVICE"),${allFilters}`//':filter(and('+allFilters+'))';
   if(allFilters == "")
-    filter = ""
+    entrySelector = undefined
   
   const metric = `builtin:service.${metricName}`
   const split  = ':splitBy()'
@@ -142,10 +145,11 @@ export function serviceWorkload(metricName : string,
   if(isTimeshift)
     timeshift = ":timeshift(-7d)"
 
-  const metricSelector = metric+filter+split+ (extra ? ":"+extra : "")+timeshift;
+  const metricSelector = metric+split+ (extra ? ":"+extra : "")+timeshift;
 
+  const resolutionNow = pickResolution(7+plusResolution,timeFrame)
   
-  return clientClassic(metricSelector,timeFrame)
+  return clientClassic(metricSelector,timeFrame,resolutionNow,entrySelector)
 }
 
 function transformarJson(input) {

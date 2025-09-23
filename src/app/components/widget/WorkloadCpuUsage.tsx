@@ -6,12 +6,12 @@ import { kubernetesWorkload, responseTime } from 'src/app/services/k8s/WorkloadS
 import { convertQueryResultToTimeseries, convertToTimeseries } from '@dynatrace/strato-components-preview/conversion-utilities';
 import { ChartProps } from '../filters/BarChartProps';
 import { TimeSeriesMinMax } from 'src/app/model/TimeSeriesMinMax';
-import { Colors } from '@dynatrace/strato-design-tokens';
-import { Button } from '@dynatrace/strato-components';
+import Colors from '@dynatrace/strato-design-tokens/colors';
+import { Button } from '@dynatrace/strato-components/buttons';
 
 
 
-function WorkloadCpuUsage({ filters, lastRefreshedAt}: ChartProps, desejado : boolean = false) {
+function WorkloadCpuUsage({ filters}: ChartProps, desejado : boolean = false) {
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [throttled, setThrottled] = useState<Timeseries>();
   const [loading, setLoading] = useState(false);
@@ -65,7 +65,7 @@ function WorkloadCpuUsage({ filters, lastRefreshedAt}: ChartProps, desejado : bo
     };
 
     load();
-  }, [filters,lastRefreshedAt]);
+  }, [filters]);
 
   useEffect(() => {
     const arr = throttled != null ? [...series, throttled] : series;

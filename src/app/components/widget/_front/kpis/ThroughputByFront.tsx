@@ -33,7 +33,7 @@ const ThroughputByFront = ({ front }: ByFrontProp) => {
   const funcao = async (front: string, timeframe: TimeframeV2): Promise<NowBaseline> =>{
     const handdle = new MetricSeriesCollectionHandl()
     return builtinThroughputUserActionByFront(front,timeframe).then(it => {
-      const now = handdle.getSum(it.getByMetric("count.xhr"))+handdle.getSum(it.getByMetric("count.load"));
+      const now = handdle.getSum(it.getByMetric("xhr"))+handdle.getSum(it.getByMetric("load"));
       return classicBaseLineBy(it,timeframe,"","").then(it => {
         const metric = it.getByMetric("xhr")
         return { now, baseline: handdle.getSum(metric) }
