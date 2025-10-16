@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { FilterBar, FilterItemValues } from '@dynatrace/strato-components-preview/filters';
 import { TimeFrame } from '../timeframe/Timeframe';
 import { FilterBarProps } from '../dashboard/DashBoard';
-import { SelectComponent } from '../form/Select';
+import { Option, SelectComponent } from '../form/Select';
 import { FrontendSelection } from './properties/FrontendSelect';
 import { useAutoRefreshMs, useFrontendsSelected, useFrontKpisSelected, useSetAutoRefreshMs, useSetFrontendsSelected, useSetFrontKpisSelected, useSetTimeFrame, useTimeFrame } from '../context/FilterK8sContext';
 import { KpisFrontSelection } from './properties/KpisFrontSelect';
@@ -68,19 +68,20 @@ export const FilterFrontend = ({ onFiltersChange }: FilterBarProps) => {
       <FilterBar.Item name="frontends" label="Frontend">
         <FrontendSelection />
       </FilterBar.Item>
-      <FilterBar.Item name="kpis" label="KPI's">
+      <FilterBar.Item name="kpis" label="KPI">
         <KpisFrontSelection />
       </FilterBar.Item>
-      <FilterBar.Item name="timeframe" label="">
+      <FilterBar.Item name="timeframe" label="Período de tempo">
         <TimeFrame />
       </FilterBar.Item>
-      <FilterBar.Item name="time" label="Auto Refresh">
+      <FilterBar.Item name="time" label="Atualização Automática">
         <SelectComponent
           defaultValue={autoRefresh.toString()}
           options={[
-            new Option("10m", "600000"),
-            new Option("5m", "300000"),
             new Option("1m", "60000"),
+            new Option("5m", "300000"),
+            new Option("10m", "600000"),
+            new Option("Desligado", null)
           ]}
           clearable={false}
         />

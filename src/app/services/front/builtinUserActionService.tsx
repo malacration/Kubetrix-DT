@@ -31,14 +31,27 @@ export function builtinThroughputUserActionByFront(frontName : string, timeframe
 }
 
 
+//CODIGO ANDREW
+/*
 export function builtinApdexByFront(frontName : string, timeframe? : TimeframeV2) {
     const entrySelection = `type(APPLICATION_METHOD),fromRelationship.isApplicationMethodOf(type(APPLICATION),entityName.equals(${frontName}))`
     const querysBymetric = "builtin:apps.web.action.apdex:splitBy():fold(avg)"
     return clientClassic(querysBymetric,timeframe,undefined,entrySelection)
 } 
+*/
+
+//CODIGO KAUE
+
+export function builtinApdexByFront(frontName : string, timeframe? : TimeframeV2) {
+    const entrySelection = `type("APPLICATION"),entityName.equals("${frontName}")`
+    const querysBymetric = "builtin:apps.web.apdex.userType:splitBy():fold(avg)"
+    return clientClassic(querysBymetric,timeframe,undefined,entrySelection)
+} 
+
+
 
 export function builtinErrosRateByFront(frontName : string, timeframe? : TimeframeV2) {
-    const entrySelection = `type(APPLICATION),entityName.equals(${frontName})`
+    const entrySelection = `type(application),entityName.equals(${frontName})`
     const querysBymetric = `
         builtin:apps.web.countOfErrors:splitBy():fold
         /

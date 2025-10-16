@@ -43,7 +43,7 @@ const FailureCountByFrontKPI = ({ front }: ByFrontProp) => {
 
   return (
    <KpiCore
-    kpiLabel='Failure Rate'
+    kpiLabel='Taxa de falha'
     unitFormatter={formatter}
     getNowBaseline={(timeframe) => funcao(front, timeframe)}
     metricDirection={MetricDirection.LowerIsBetter}

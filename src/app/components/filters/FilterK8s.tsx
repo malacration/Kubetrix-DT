@@ -83,7 +83,7 @@ export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
         <WorkloadsSelection/>
       </FilterBar.Item>
 
-      <FilterBar.Item name="timeframe" label="">
+      <FilterBar.Item name="timeframe" label="Timeframe">
         <TimeFrame />
       </FilterBar.Item>
 
