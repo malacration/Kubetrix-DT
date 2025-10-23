@@ -211,7 +211,7 @@ const KpiCore = ({
                 value: baselineValue+(baselineValue*badPercent/100),    
                 color: Colors.Background.Container.Critical.Accent 
             },
-            ];
+          ];
     };
 
     useEffect(() => {
@@ -232,7 +232,7 @@ const KpiCore = ({
             label={kpiLabel}
             applyThresholdBackground={true}
             // prefixIcon={<ResearchIcon />}
-            color={Colors.Background.Container.Success.Default}
+            style={{backgroundColor: Colors.Background.Container.Success.Default}}
             thresholds={thresholds()}
             loading={loading}
             // prefixIcon={prefixIcon}
