@@ -1,0 +1,276 @@
+import React from "react";
+import {
+  Dispatch,
+  ReactElement,
+  SetStateAction,
+  useMemo,
+  useState,
+} from "react";
+import { createContext, useContextSelector } from "use-context-selector";
+import { useQueryState, parseAsString, parseAsInteger, parseAsArrayOf } from "nuqs";
+import { Option } from "../form/Select";
+import { Timeframe } from "@dynatrace/strato-components-preview/core";
+import { getDefaultTimeframe } from "../timeframe/DefaultTimeframe";
+import { FilterK8sContextData } from "./FilterK8sContextData";
+
+/** Props do Provider */
+interface FilterK8sContextProps {
+  children: ReactElement;
+}
+
+
+
+const FilterK8sContext = createContext<FilterK8sContextData>(
+  {} as FilterK8sContextData
+);
+
+/** Helper para ISO sem ms: "YYYY-MM-DDTHH:mmZ" */
+function toIsoNoMs(d: Date) {
+  return d.toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
+export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
+  // OPTIONS
+  const [clusterOptions, setClusterOptions] = useState<Array<Option>>([
+    new Option("All", "all"),
+  ]);
+  const [namespaceOptions, setNamespaceOptions] = useState<Array<Option>>([
+    new Option("All", "all"),
+  ]);
+  const [workloadOptions, setWorkloadOptions] = useState<Array<Option>>([
+    new Option("All", "all"),
+  ]);
+
+  const [frontendsOptions, setFrontendsOptions] = useState<Array<Option>>([]);
+
+  // SELECTED sincronizados na URL (nuqs)
+  const [clusterSelectedRaw, setClusterSelectedRaw] = useQueryState(
+    "cluster",
+    parseAsString.withDefault("all")
+  );
+  const [namespaceSelectedRaw, setNamespaceSelectedRaw] = useQueryState(
+    "ns",
+    parseAsString.withDefault("all")
+  );
+  const [workloadSelectedRaw, setWorkloadSelectedRaw] = useQueryState(
+    "wl",
+    parseAsString.withDefault("all")
+  );
+
+  const [autoRefreshMsRaw, setAutoRefreshMsRaw] = useQueryState<number>(
+    "ar",
+    parseAsInteger.withDefault(300000)
+  );
+
+  const [frontendsSelectedRaw, setFrontendsSelectedRaw] = useQueryState<string[]>('front',
+    parseAsArrayOf(parseAsString).withDefault(['all'])
+  );
+
+  const [frontKpisSelectedRaw, setFrontKpisSelectedRaw] = useQueryState<string[]>('fkpis',
+    parseAsArrayOf(parseAsString).withDefault([])
+    .withOptions({
+      history: 'replace',
+      shallow: true,
+    })
+
+  );
+
+  // Adaptadores para manter a assinatura Dispatch<SetStateAction<string>>
+  const setClusterSelected: Dispatch<SetStateAction<string>> = (upd) => {
+    const next =
+      typeof upd === "function"
+        ? (upd as (prev: string) => string)(clusterSelectedRaw)
+        : upd;
+    setClusterSelectedRaw(next ?? "all");
+  };
+  const setNamespaceSelected: Dispatch<SetStateAction<string>> = (upd) => {
+    const next =
+      typeof upd === "function"
+        ? (upd as (prev: string) => string)(namespaceSelectedRaw)
+        : upd;
+    setNamespaceSelectedRaw(next ?? "all");
+  };
+
+  const setWorkloadSelected: Dispatch<SetStateAction<string>> = (upd) => {
+    const next =
+      typeof upd === "function"
+        ? (upd as (prev: string) => string)(workloadSelectedRaw)
+        : upd;
+    setWorkloadSelectedRaw(next ?? "all");
+  };
+
+  const setFrontendsSelected: Dispatch<SetStateAction<string[]>> = (upd) => {
+    const next =
+      typeof upd === 'function'
+        ? (upd as (prev: string[]) => string[])(frontendsSelectedRaw ?? ['all'])
+        : upd;
+
+    const safe = !next || next.length === 0 ? ['all'] : next;
+
+    return setFrontendsSelectedRaw(safe);
+  };
+
+
+  const setFrontKpisSelected: Dispatch<SetStateAction<string[]>> = (upd) => {
+    const next =
+      typeof upd === 'function'
+        ? (upd as (prev: string[]) => string[])(frontKpisSelectedRaw ?? [])
+        : upd;
+
+    const safe = !next || next.length === 0 ? [] : next;
+    return setFrontKpisSelectedRaw(safe);
+  };
+
+  const setAutoRefreshMs: Dispatch<SetStateAction<number>> = (upd) => {
+    const next =
+      typeof upd === "function"
+        ? (upd as (prev: number) => number)(autoRefreshMsRaw)
+        : upd;
+        
+        setAutoRefreshMsRaw(next ?? 20000);
+        if(next != autoRefreshMsRaw){
+          setLastRefreshedAt(new Date())
+          console.log("parametro mudou")
+        }
+  };
+
+  // TIMEFRAME (state local; se quiser, dá pra serializar em query depois)
+  const [timeFrame, setTimeFrame] = useState<Timeframe>(getDefaultTimeframe());
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(
+    new Date()
+  );
+
+  const value = useMemo<FilterK8sContextData>(
+    () => ({
+      // cluster
+      clusterOptions,
+      clusterSelected: clusterSelectedRaw,
+      setClusterSelected,
+      setClusterOptions, // << NEW
+
+      // namespace
+      namespaceOptions,
+      namespaceSelected: namespaceSelectedRaw,
+      setNamespaceSelected,
+      setNamespaceOptions, // << NEW
+
+      // workload
+      workloadOptions,
+      workloadSelected: workloadSelectedRaw,
+      setWorkloadSelected,
+      setWorkloadOptions, // << NEW
+
+      //frontend
+      frontendsOptions,
+      setFrontendsOptions,
+      
+      frontendsSelected: frontendsSelectedRaw,
+      setFrontendsSelected,
+      
+      //kpis
+      frontKpisSelected: frontKpisSelectedRaw,
+      setFrontKpisSelected,
+      
+      // time
+      timeFrame,
+      setTimeFrame,
+
+      // refresh
+      autoRefreshMs: autoRefreshMsRaw,
+      setAutoRefreshMs,
+      lastRefreshedAt,
+      setLastRefreshedAt,
+      
+    }),
+    [
+      clusterOptions,
+      clusterSelectedRaw,
+      namespaceOptions,
+      namespaceSelectedRaw,
+      workloadOptions,
+      workloadSelectedRaw,
+      frontendsOptions,
+      frontendsSelectedRaw,
+      frontKpisSelectedRaw,
+      timeFrame,
+      autoRefreshMsRaw,
+      lastRefreshedAt,
+    ]
+  );
+
+  return (
+    <FilterK8sContext.Provider value={value}>
+      {children}
+    </FilterK8sContext.Provider>
+  );
+}
+
+/** Selectors (use-context-selector) */
+export const useClusterSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.clusterSelected);
+export const useSetClusterSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setClusterSelected);
+
+export const useNamespaceSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.namespaceSelected);
+export const useSetNamespaceSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setNamespaceSelected);
+
+export const useWorkloadSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.workloadSelected);
+export const useSetWorkloadSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setWorkloadSelected);
+
+export const useTimeFrame = () =>
+  useContextSelector(FilterK8sContext, (v) => v.timeFrame);
+export const useSetTimeFrame = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setTimeFrame);
+
+export const useAutoRefreshMs = () =>
+  useContextSelector(FilterK8sContext, (v) => v.autoRefreshMs);
+
+export const useSetAutoRefreshMs = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setAutoRefreshMs);
+
+export const useLastRefreshedAt = () =>
+  useContextSelector(FilterK8sContext, (v) => v.lastRefreshedAt);
+
+export const useSetLastRefreshedAt = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setLastRefreshedAt);
+
+// NEW: selectors para options
+export const useClusterOptions = () =>
+  useContextSelector(FilterK8sContext, (v) => v.clusterOptions);
+
+export const useSetClusterOptions = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setClusterOptions);
+
+export const useNamespaceOptions = () =>
+  useContextSelector(FilterK8sContext, (v) => v.namespaceOptions);
+export const useSetNamespaceOptions = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setNamespaceOptions);
+
+export const useWorkloadOptions = () =>
+  useContextSelector(FilterK8sContext, (v) => v.workloadOptions);
+
+export const useSetWorkloadOptions = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setWorkloadOptions);
+
+
+export const useFrontendsSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.frontendsSelected);
+
+export const useSetFrontendsSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setFrontendsSelected);
+
+export const useFrontKpisSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.frontKpisSelected);
+
+export const useSetFrontKpisSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setFrontKpisSelected);
+
+export const useFrontendsOptions = () =>
+  useContextSelector(FilterK8sContext, (v) => v.frontendsOptions);
+
+export const useSetFrontendsOptions = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setFrontendsOptions);

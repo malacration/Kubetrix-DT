@@ -1,17 +1,18 @@
 {
   "environmentUrl": "https://zey48022.apps.dynatrace.com",
+  "build": {
+    "sourceRoot": "./"
+  },
   "app": {
     "name": "Kubetrix DT",
     "version": "0.0.0",
     "description": "Collects K8s metrics to Dynatrace for observability",
     "id": "my.kubetrix.dt",
     "scopes": [
-      
       {
         "name": "environment-api:metrics:read",
         "comment": "leitura de metricas"
       },
-
       {
         "name": "storage:logs:read",
         "comment": "default template"
@@ -31,6 +32,10 @@
       {
         "name": "storage:entities:read",
         "comment": "Allows to read entities"
+      },
+      {
+        "name": "app-settings:objects:read",
+        "comment": "To read app settings"
       }
     ]
   },
