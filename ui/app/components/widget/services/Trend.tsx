@@ -1,5 +1,6 @@
+import React from 'react';
 import { ArrowSmallUpIcon, ArrowSmallDownIcon } from '@dynatrace/strato-icons';
-import { Tooltip } from '@dynatrace/strato-components-preview';
+import { Tooltip } from '@dynatrace/strato-components-preview/overlays';
 
 const COLORS = {
   better: 'var(--dt-colors-charts-status-ideal-default)',
