@@ -13,7 +13,7 @@ import { isQueryResult, queryResultToTimeseries } from 'app/services/core/GrailC
 
 
 
-function WorkloadResponseTime({ filters, lastRefreshedAt, title = "windson" }: ChartProps) {
+function WorkloadResponseTime({ filters, title = "windson" }: ChartProps) {
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +44,7 @@ function WorkloadResponseTime({ filters, lastRefreshedAt, title = "windson" }: C
     };
 
     load();
-  }, [filters,lastRefreshedAt]);
+  }, [filters]);
 
   return (
     <TimeseriesChart

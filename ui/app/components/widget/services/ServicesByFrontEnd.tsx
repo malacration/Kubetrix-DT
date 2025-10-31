@@ -34,7 +34,7 @@ function ServicesByFrontEnd({ filters, lastRefreshedAt}: ChartProps) {
           return (
             <DataTableV2.DefaultCell >
               <Link
-                href={`${getEnvironmentUrl()}/apps/dynatrace.classic.services/ui/entity/${rowData?.id}`}
+                href={`${getEnvironmentUrl()}/ui/apps/dynatrace.classic.services/ui/entity/${rowData?.id}`}
                 target="_blank"
               >
                 {value}

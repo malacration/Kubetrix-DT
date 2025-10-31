@@ -36,7 +36,7 @@ function CallServices({ filters, lastRefreshedAt}: ChartProps) {
           return (
             <DataTableV2.DefaultCell >
               <Link
-                href={`${getEnvironmentUrl()}/apps/dynatrace.classic.services/ui/entity/${rowData?.id}`}
+                href={`${getEnvironmentUrl()}/ui/apps/dynatrace.classic.services/ui/entity/${rowData?.id ?? rowData?.lookupId}`}
                 target="_blank"
               >
                 {value}
@@ -114,8 +114,12 @@ function CallServices({ filters, lastRefreshedAt}: ChartProps) {
     if((workload && workload != "all") || (namespace && namespace != "all")){
       setLoading(true);
       getCallServices(cluster,namespace,workload,timeframe).then(it => {
-        if(it?.records)
+        if(it?.records){
           setProblems(it?.records.map(it => normalizeRecord(it)))
+          console.log(problems)
+        }
+          
+        
         setLoading(false);
       })
     }

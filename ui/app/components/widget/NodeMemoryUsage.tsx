@@ -36,7 +36,7 @@ function NodeMemoryUsage({ filters, lastRefreshedAt }: ChartProps, showLabels = 
   const openEntity = (entity) => {
     const found = metric.find(it => it.name == entity.name)
     if(found?.id){
-      const url = `https://zey48022.apps.dynatrace.com/apps/dynatrace.classic.hosts/ui/entity/${found?.id}`;
+      const url = `https://zey48022.apps.dynatrace.com/ui/apps/dynatrace.classic.hosts/ui/entity/${found?.id}`;
       window.open(url, '_blank');
     }
   };

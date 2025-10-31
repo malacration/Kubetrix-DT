@@ -49,7 +49,7 @@ function Problems({ filters, lastRefreshedAt}: ChartProps) {
           return (
             <DataTableV2.DefaultCell >
               <Link
-                href={`${getEnvironmentUrl()}/apps/dynatrace.classic.problems/#problems/problemdetails;gtf=-2h;gf=all;pid=${value}`}
+                href={`${getEnvironmentUrl()}/ui/apps/dynatrace.classic.problems/#problems/problemdetails;gtf=-2h;gf=all;pid=${value}`}
                 target="_blank"
               >
                 {rowData?.display_id}
