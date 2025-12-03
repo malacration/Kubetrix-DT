@@ -18,21 +18,14 @@ const normalizeRecord = (r: any) => ({
   ...r,
 })
 
-type CallServicesProps = ChartProps & { allowAll?: boolean };
-
-function CallServices({ filters, allowAll = false }: CallServicesProps) {
+function Throughput({ filters}: ChartProps) {
   
   const url = getEnvironmentUrl();
 
   const [problems, setProblems] = useState<[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const cluster = filters?.cluster?.value;
-  const namespace = filters?.namespace?.value;
-  const workload = filters?.workload?.value;
-  const timeframe = filters?.timeframe?.value;
-
-  const columns = useMemo<DataTableV2ColumnDef<(typeof data)[number]>[]>(
+  const columns = useMemo<DataTableV2ColumnDef<(typeof any)[number]>[]>(
     () => [
       {
         header: 'Name',
@@ -104,10 +97,6 @@ function CallServices({ filters, allowAll = false }: CallServicesProps) {
         accessor: 'baseCount', id: 'baseCount', header: 'Base Throughput', 
         formatter:countFormatter, width: { type: 'auto',maxWidth: 180 }, sortType:"number" 
       },
-      { 
-        accessor: 'diffCount', id: 'diffCount', header: 'Diff Throughput', 
-        formatter:countFormatter, width: { type: 'auto',maxWidth: 180 }, sortType:"number" 
-      },
     ],
     []
   );
@@ -115,17 +104,30 @@ function CallServices({ filters, allowAll = false }: CallServicesProps) {
   
   
   useEffect(() => {
-    if(allowAll || (workload && workload != "all") || (namespace && namespace != "all")){
+    if (!filters) return;
+    const { cluster, namespace, workload, timeframe } = {
+      cluster:   filters.cluster?.value,
+      namespace: filters.namespace?.value,
+      workload:  filters.workload?.value,
+      timeframe: filters.timeframe?.value,
+    };
+    if((workload && workload != "all") || (namespace && namespace != "all")){
       setLoading(true);
       getCallServices(cluster,namespace,workload,timeframe).then(it => {
         if(it?.records){
           setProblems(it?.records.map(it => normalizeRecord(it)))
           console.log(problems)
         }
+          
+        
         setLoading(false);
       })
     }
-  }, [allowAll, cluster, namespace, workload, timeframe]);
+    
+
+    
+
+  }, [filters]);
 
   return (
     <div>
@@ -153,6 +155,6 @@ function CallServices({ filters, allowAll = false }: CallServicesProps) {
 }
 
 
-(CallServices as any).dashboardWidget = true;
+(Throughput as any).dashboardWidget = true;
 
-export { CallServices };
+export { Throughput };

@@ -48,7 +48,7 @@ function NodeCpuOverload({ filters, lastRefreshedAt }: ChartProps, showLabels = 
             data={metric?.sort((a, b) => b.value - a.value)}
             showLabels={showLabels}
             colorScheme={percentOverloadColorScheme}
-            unit={"percentage"}
+            unit={"%"}
             seriesActions={(s) => (
               <ChartSeriesAction>
                 <ChartSeriesAction.Item

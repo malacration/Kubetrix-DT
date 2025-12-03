@@ -37,7 +37,7 @@ export function getServices(cluster,namespace,workload,timeframe) : Promise<Quer
                 timeseries v_21d = avg(dt.service.request.response_time, scalar: true), by:{ dt.entity.service }, shift: -21d
                 ], fields:{ v_21d }
             | fieldsRemove timeframe, interval
-            | fields currResponse = v, baseResponse = (v_7d+v_14d+v_21d)/3, v_7d, v_14d, v_21d, dt.entity.service
+            | fields currResponse = v, baseResponse = (v_7d+v_14d+v_21d)/3, dt.entity.service
             ], sourceField:id, lookupField:dt.entity.service, fields:{currResponse,baseResponse}, executionOrder:leftFirst
             | lookup [
             timeseries v = sum(dt.service.request.count, scalar: true), by:{ dt.entity.service }
@@ -51,7 +51,7 @@ export function getServices(cluster,namespace,workload,timeframe) : Promise<Quer
                 timeseries v_21d = sum(dt.service.request.count, scalar: true), by:{ dt.entity.service }, shift: -21d
                 ], fields:{ v_21d }
             | fieldsRemove timeframe, interval
-            | fields currCount = v, baseCount = (v_7d+v_14d+v_21d)/3, v_7d, v_14d, v_21d, dt.entity.service
+            | fields currCount = v, baseCount = arrayMedian(array(v_7d,v_14d,v_21d)), dt.entity.service
         ], sourceField:id, lookupField:dt.entity.service, fields:{currCount,baseCount}, executionOrder:leftFirst
     `
     // console.log(dql)
@@ -102,7 +102,7 @@ export function getCallServices(cluster,namespace,workload,timeframe) : Promise<
                     timeseries v_21d = avg(dt.service.request.response_time, scalar: true), by:{ dt.entity.service }, shift: -21d
                     ], fields:{ v_21d }
                 | fieldsRemove timeframe, interval
-                | fields currResponse = v, baseResponse = (v_7d+v_14d+v_21d)/3, v_7d, v_14d, v_21d, dt.entity.service
+                | fields currResponse = v, baseResponse = (v_7d+v_14d+v_21d)/3, dt.entity.service
                 ], sourceField:lookupId, lookupField:dt.entity.service, fields:{currResponse,baseResponse}, executionOrder:leftFirst
                 | lookup [
                 timeseries v = sum(dt.service.request.count, scalar: true), by:{ dt.entity.service }
@@ -116,7 +116,7 @@ export function getCallServices(cluster,namespace,workload,timeframe) : Promise<
                     timeseries v_21d = sum(dt.service.request.count, scalar: true), by:{ dt.entity.service }, shift: -21d
                     ], fields:{ v_21d }
                 | fieldsRemove timeframe, interval
-                | fields currCount = v, baseCount = (v_7d+v_14d+v_21d)/3, v_7d, v_14d, v_21d, dt.entity.service
+                | fields currCount = v, baseCount = arrayMedian(array(v_7d,v_14d,v_21d)), dt.entity.service
             ], sourceField:lookupId, lookupField:dt.entity.service, fields:{currCount,baseCount}, executionOrder:leftFirst
         ],
         sourceField: calls.dt.entity.service,
@@ -125,6 +125,8 @@ export function getCallServices(cluster,namespace,workload,timeframe) : Promise<
         | filter isNotNull(lookupId)
         | fieldsRemove id, calls.dt.entity.service
         | dedup lookupId
+        | fieldsAdd diffCount = currCount-baseCount
     `
+    console.log(dql)
     return GrailDqlQuery(dql,timeframe);
 }

@@ -14,6 +14,7 @@ const dynamicImport = (prefix: string, page: string) => {
     );
   } catch (err) {
     console.error('Erro ao carregar o exemplo:', err);
+    // eslint-disable-next-line react/display-name
     return () => <div>Exemplo não encontrado</div>;
   }
 };

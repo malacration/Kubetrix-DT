@@ -1,5 +1,6 @@
 import { QueryResult, ResultRecord } from '@dynatrace-sdk/client-query';
 import { HoneycombTileNumericData, Timeseries } from '@dynatrace/strato-components-preview/charts';
+import { replaceHostNames } from 'app/components/utils/abreviaNomes';
 
 export function converterToHoneycomb(
   queryResult: QueryResult | { error: string } | null | undefined,
@@ -40,7 +41,7 @@ export function converterToHoneycomb(
         item[key] = rec[key];
       }
       // campos obrigatórios do HoneycombTileNumericData
-      item.name = String(rec[nameKey]);
+      item.name = replaceHostNames(String(rec[nameKey]));
       item.value = num;
 
       return item as HoneycombTileNumericData;

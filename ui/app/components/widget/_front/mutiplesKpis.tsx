@@ -11,6 +11,8 @@ import { ThroughputByFront } from './kpis/ThroughputByFront';
 import { FailureCountByFrontKPI } from './kpis/FailureCountByFrontKPI';
 import { UserActionTime } from './kpis/UserActionTime';
 import { ApdexKpi } from './kpis/ApdexKPI';
+import { NetworkTime } from './kpis/NetworkTime';
+import { ServerTime } from './kpis/ServerTime';
 
 
 async function getRumSamplingPercent(applicationId: string) {
@@ -78,6 +80,22 @@ const MultiplesKpis = () => {
                             kpis.findIndex(it => it == "duration99") > -1 ? 
                             <Flex padding={0} margin={0} className="kdt-content">
                                 <UserActionTime front={frontend} agreggation='percentile(99)' />
+                            </Flex>
+                            : <></>
+                        }
+
+                        { 
+                            kpis.findIndex(it => it == "net-contri") > -1 ? 
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <NetworkTime front={frontend} agreggation='avg' />
+                            </Flex>
+                            : <></>
+                        }
+
+                        { 
+                            kpis.findIndex(it => it == "server-contri") > -1 ? 
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <ServerTime front={frontend} agreggation='avg' />
                             </Flex>
                             : <></>
                         }

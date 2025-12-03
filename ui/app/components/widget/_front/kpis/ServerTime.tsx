@@ -10,10 +10,9 @@ import {
 import { KpiCore, MetricDirection, NowBaseline } from '../kpiCore';
 import { Timeframe } from '@dynatrace/strato-components-preview/core';
 import { ClockIcon } from '@dynatrace/strato-icons';
-import { builtinDurationUserActionByFront} from 'app/services/front/builtinUserActionService';
+import { builtinServerContributionByFront} from 'app/services/front/builtinUserActionService';
 import { classicBaseLineBy } from 'app/services/builtin/baseLineService';
 import { MetricSeriesCollectionHandl } from 'app/services/core/MetricsClientClassic';
-import { pickResolution } from 'app/components/timeframe/resolution';
 
 
 type ByFrontProp = {
@@ -21,7 +20,7 @@ type ByFrontProp = {
   agreggation : "median" | "avg" | "percentile(90)" | "percentile(99)"
 };
 
-const UserActionTime = ({ front, agreggation }: ByFrontProp) => {
+const ServerTime = ({ front, agreggation }: ByFrontProp) => {
 
   const timeFormatter: FormatOptions<Unit, ConvertibleUnit> = {
     input: units.time.millisecond,
@@ -30,7 +29,7 @@ const UserActionTime = ({ front, agreggation }: ByFrontProp) => {
   
   const funcao = async (front: string, timeframe: Timeframe): Promise<NowBaseline> =>{
     const handdle = new MetricSeriesCollectionHandl()
-    return builtinDurationUserActionByFront(front,timeframe,agreggation).then(metricResult => {
+    return builtinServerContributionByFront(front,timeframe,agreggation).then(metricResult => {
       return classicBaseLineBy(metricResult,timeframe,"","",3).then(base => {
         return { 
           now : handdle.getAvg(metricResult.getByMetric("xhr")), 
@@ -43,21 +42,21 @@ const UserActionTime = ({ front, agreggation }: ByFrontProp) => {
   const titulo = () =>{
     switch (agreggation) {
       case "median":
-        return "Típico (p50)";
+        return "(p50)";
       case "avg":
-        return "Média (avg)";
+        return "(avg)";
       case "percentile(90)":
-        return "10% piores (p90)";
+        return "(p90)";
       case "percentile(99)":
-        return "Extremos (p99)";
+        return "(p99)";
       default:
-        return "Action Duration";
+        return "Network";
   }
   }
 
   return (
    <KpiCore
-      kpiLabel={titulo()}
+      kpiLabel={'Server '+titulo()}
       unitFormatter={timeFormatter}
       getNowBaseline={(timeframe) => funcao(front, timeframe)}
       metricDirection={MetricDirection.LowerIsBetter}
@@ -68,4 +67,4 @@ const UserActionTime = ({ front, agreggation }: ByFrontProp) => {
   );
 };
 
-export { UserActionTime };
+export { ServerTime };
