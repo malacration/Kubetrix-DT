@@ -1,13 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { type ReactNode } from 'react';
 
-import { type PropsWithChildren } from 'react';
-
-import { Formatter, SingleValue, SingleValueGrid, Timeseries, TrendDirection, TrendIndicatorColors } from '@dynatrace/strato-components-preview/charts';
-import { serviceMetricByApplicationName } from 'app/services/front/WorkloadService';
-import { getDefaultTimeframe } from '../../timeframe/DefaultTimeframe';
-import { isQueryResult } from 'app/services/core/GrailConverter';
-import { Container, Flex } from '@dynatrace/strato-components/layouts';
+import { SingleValue, Timeseries, TrendDirection, TrendIndicatorColors } from '@dynatrace/strato-components-preview/charts';
 
 import {
   ConvertibleUnit,
@@ -16,7 +10,7 @@ import {
   units,
 } from '@dynatrace-sdk/units';
 import Colors from '@dynatrace/strato-design-tokens/colors';
-import { useLastRefreshedAt, useTimeFrame } from '../../context/FilterK8sContext';
+import { useLastRefreshedAt, useTimeFrame } from '../context/FilterK8sContext';
 import { Threshold, Timeframe } from '@dynatrace/strato-components-preview/core';
 
 

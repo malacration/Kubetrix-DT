@@ -1,28 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useFrontendsSelected, useFrontKpisSelected, useLastRefreshedAt } from '../../context/FilterK8sContext';
-import { ReponseTimeByFront } from './kpis/ReponseTimeByFront';
-import { Container, Divider, Flex } from '@dynatrace/strato-components/layouts';
-import Colors from '@dynatrace/strato-design-tokens/colors';
-import Borders from '@dynatrace/strato-design-tokens/borders';
+import { useFrontendsSelected, useFrontKpisSelected, useLastRefreshedAt } from './../../context/FilterK8sContext';
+import { Flex } from '@dynatrace/strato-components/layouts';
 
-import './KubetrixKpi.css';
-import { P90ByFront } from './kpis/P90ByFront';
+import './../style/KubetrixKpi.css';
 import { ThroughputByFront } from './kpis/ThroughputByFront';
 import { FailureCountByFrontKPI } from './kpis/FailureCountByFrontKPI';
 import { UserActionTime } from './kpis/UserActionTime';
 import { ApdexKpi } from './kpis/ApdexKPI';
 import { NetworkTime } from './kpis/NetworkTime';
 import { ServerTime } from './kpis/ServerTime';
-
-
-async function getRumSamplingPercent(applicationId: string) {
-  const url = `https://zey48022.apps.dynatrace.com/api/v2/settings/objects` +
-    `?schemaIds=builtin:rum.web.enablement&scopes=${encodeURIComponent(applicationId)}`;
-  const res = await fetch(url);
-  const json = await res.json();
-  return json.items?.[0]?.value?.rum?.costAndTrafficControl ?? null; // inteiro 0..100
-}
-
 
 
 const MultiplesKpis = () => {

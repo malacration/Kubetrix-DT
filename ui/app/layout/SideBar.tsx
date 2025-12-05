@@ -5,7 +5,8 @@ import { Link, useLocation } from 'react-router-dom';
 
 const exemplos = [
   { label: 'Generic', path: '/dashboards/Generic' },
-  { label: "Frontend's", path: '/dashboards/Frontends' },
+  { label: "Frontend's (KPI)", path: '/dashboards/Frontends' },
+  { label: "Postgres DBs (KPI)", path: '/dashboards/Postgres' },
   { label: 'Capacity Optimization', path: '/dashboards/Optimization' },
 ];
 
