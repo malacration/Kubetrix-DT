@@ -14,3 +14,7 @@ export function replaceHostNames(host : string) : string{
     replaces.forEach(it => host = host.replace(it,""))
     return host
 }
+
+export function removeParenthesesContent(value: string): string {
+    return value.replace(/\([^)]*\)/g, "");
+}

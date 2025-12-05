@@ -23,12 +23,12 @@ export const PostgresDBsSelection = forwardRef<HTMLDivElement, FrontendSelection
       setLoading(true)
       getPostgresDbs(timeframe).then(it => {
         if(isQueryResult(it))
-          setOption(it.records.map(it => new Option(it!["database"],it!["database"])))
+          setOption(it.records.map(it => new Option(it!["database"],it!["entity.name"])))
         setLoading(false)
       });
     }, [timeframe]);
 
-    return( 
+    return(
         <div ref={ref}>
             <SelectComponent
                 defaultValue={frontends}
@@ -39,7 +39,6 @@ export const PostgresDBsSelection = forwardRef<HTMLDivElement, FrontendSelection
                 onChange={onChange} />
         </div>
     )
-
 })
 // @ts-expect-error pede displayname e depois nao reconhece
 PostgresDBsSelection.displayName = 'PostgresDbsSelection';

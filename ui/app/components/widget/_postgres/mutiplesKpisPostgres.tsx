@@ -2,8 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useFrontendsSelected, useFrontKpisSelected as useKpisSelected, useLastRefreshedAt } from './../../context/FilterK8sContext';
 
 import './../style/KubetrixKpi.css';
-import { SessionsKPI } from './kpis/SessionsKPI';
+import { SessionsCountKPI } from './kpis/SessionsCountKPI';
 import { Flex } from '@dynatrace/strato-components/layouts';
+import { SessionsTimeKPI } from './kpis/SessionsTimeKPI';
+import { ActiveConKPI } from './kpis/ActivityConKPI';
+import { removeParenthesesContent } from 'app/components/utils/abreviaNomes';
+import { ConflictsKPI } from './kpis/ConflictsKPI';
 
 
 const MutiplesKpisPostgres = () => {
@@ -22,19 +26,40 @@ const MutiplesKpisPostgres = () => {
     <div>
         {selecteds
         .filter(f => f && f != 'all')
-        .map(frontend => (
-            <div key={frontend} style={{
+        .map(kpi => (
+            <div key={kpi} style={{
                 marginBottom: '0.5em'
             }}>
                 <Flex padding={0} margin={0} className="kdt-container">
                     <Flex padding={0} margin={0} className="kdt-row kdt-row--tall">
                         <Flex className="kdt-badge">
-                            <h4 className="kdt-badge__title">{frontend}</h4>
+                            <h4 className="kdt-badge__title">{removeParenthesesContent(kpi)}</h4>
                         </Flex>
                         {
-                            kpis.findIndex(it => it == "duration50") > -1 ? 
+                            kpis.findIndex(it => it == "sessions-count") > -1 ? 
                             <Flex padding={0} margin={0} className="kdt-content">
-                                <SessionsKPI front={frontend}/>
+                                <SessionsCountKPI front={kpi}/>
+                            </Flex>
+                            : <></>
+                        },
+                        {
+                            kpis.findIndex(it => it == "session-time") > -1 ? 
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <SessionsTimeKPI front={kpi}/>
+                            </Flex>
+                            : <></>
+                        },
+                        {
+                            kpis.findIndex(it => it == "activity") > -1 ? 
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <ActiveConKPI front={kpi}/>
+                            </Flex>
+                            : <></>
+                        },
+                        {
+                            kpis.findIndex(it => it == "conflict") > -1 ? 
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <ConflictsKPI front={kpi}/>
                             </Flex>
                             : <></>
                         }

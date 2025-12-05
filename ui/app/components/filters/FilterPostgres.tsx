@@ -8,6 +8,7 @@ import { useAutoRefreshMs, useFrontendsSelected as useKPIentitysSelected, useFro
 import { KpisFrontSelection } from './properties/KpisFrontSelect';
 import { Timeframe } from '@dynatrace/strato-components-preview/core';
 import { PostgresDBsSelection } from './properties/PostgresDBsSelect';
+import { KpisPostgresDbSelection } from './properties/KpisPostgresDbSelect';
 
 function mergeFilterValues(prev: FilterItemValues, next: FilterItemValues): FilterItemValues {
   const merged = { ...prev };
@@ -72,7 +73,7 @@ export const FilterPostgres = ({ onFiltersChange }: FilterBarProps) => {
         <PostgresDBsSelection />
       </FilterBar.Item>
       <FilterBar.Item name="kpis" label="KPI's">
-        <KpisFrontSelection />
+        <KpisPostgresDbSelection />
       </FilterBar.Item>
       <FilterBar.Item name="timeframe" label="timeframe">
         <TimeFrame />

@@ -21,7 +21,7 @@ import { Tooltip } from '@dynatrace/strato-components-preview/overlays';
 import { ActionButton } from '@dynatrace/strato-components-preview/layouts/app-header/ActionButton';
 import { ChartProps } from '../../../filters/BarChartProps';
 import { useLastRefreshedAt, useTimeFrame } from '../../../context/FilterK8sContext';
-import { KpiCore, MetricDirection, NowBaseline } from '../kpiCore';
+import { KpiCore, MetricDirection, NowBaseline } from './../../kpiCore';
 import { Timeframe } from '@dynatrace/strato-components-preview/core';
 
 

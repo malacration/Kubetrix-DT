@@ -10,7 +10,7 @@ import {
   units,
 } from '@dynatrace-sdk/units';
 import { useTimeFrame } from '../../../context/FilterK8sContext';
-import { KpiCore, MetricDirection, NowBaseline } from '../kpiCore';
+import { KpiCore, MetricDirection, NowBaseline } from './../../kpiCore';
 import { Timeframe } from '@dynatrace/strato-components-preview/core';
 import { ClockIcon } from '@dynatrace/strato-icons';
 
