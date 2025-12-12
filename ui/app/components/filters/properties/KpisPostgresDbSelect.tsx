@@ -13,7 +13,21 @@ export const KpisPostgresDbSelection = forwardRef<HTMLDivElement, KpisFrontSelec
     const options : Array<Option> = [
       new Option("Sessions (Count)","sessions-count"),
       new Option("Session Time","session-time"),
-      new Option("Activity","activity"),
+      new Option("Activity Conn","activity"),
+      new Option("Idle Conn","idle-conn"),
+      new Option("Idle Transaction","idle-trans"),
+      new Option("Idle Trans. Aborted","idle-abort"),
+      new Option("Commits","commits"),
+      new Option("Rollback","rollback"),
+      new Option("DeadLocks","dead"),
+      new Option("Fetched Index","fetch"),
+      new Option("Fetched Total","fetch-total"),
+      new Option("Inserted","insert"),
+      new Option("Updated","update"),
+      new Option("Deleted","delete"),
+      new Option("Session","session"),
+      new Option("Session Aban.","session-aban"),
+      new Option("Session Fatal","session-fatal"),
       new Option("Conflicts","conflict"),
     ];
 

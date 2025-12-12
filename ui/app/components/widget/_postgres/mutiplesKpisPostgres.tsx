@@ -8,6 +8,7 @@ import { SessionsTimeKPI } from './kpis/SessionsTimeKPI';
 import { ActiveConKPI } from './kpis/ActivityConKPI';
 import { removeParenthesesContent } from 'app/components/utils/abreviaNomes';
 import { ConflictsKPI } from './kpis/ConflictsKPI';
+import { KpiGeneric } from '../KpiGeneric';
 
 
 const MutiplesKpisPostgres = () => {
@@ -41,28 +42,216 @@ const MutiplesKpisPostgres = () => {
                                 <SessionsCountKPI front={kpi}/>
                             </Flex>
                             : <></>
-                        },
+                        }
                         {
                             kpis.findIndex(it => it == "session-time") > -1 ? 
                             <Flex padding={0} margin={0} className="kdt-content">
                                 <SessionsTimeKPI front={kpi}/>
                             </Flex>
                             : <></>
-                        },
+                        }
+                        
                         {
                             kpis.findIndex(it => it == "activity") > -1 ? 
                             <Flex padding={0} margin={0} className="kdt-content">
                                 <ActiveConKPI front={kpi}/>
                             </Flex>
                             : <></>
-                        },
+                        }
+
                         {
-                            kpis.findIndex(it => it == "conflict") > -1 ? 
+                            kpis.findIndex(it => it == "idle-conn") > -1  ? 
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Idle Conn'
+                                    metric='postgres.activity.idle'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+
+                        {
+                            kpis.findIndex(it => it == "idle-trans") > -1  ? 
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Idle Transaction'
+                                    metric='postgres.activity.idle_in_transaction'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "idle-abort") > -1  ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Idle Trans. Aborted'
+                                    metric='postgres.activity.idle_in_transaction_aborted'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+
+
+
+                        {
+                            kpis.findIndex(it => it == "conflict") > -1 ?
                             <Flex padding={0} margin={0} className="kdt-content">
                                 <ConflictsKPI front={kpi}/>
                             </Flex>
                             : <></>
                         }
+                        {
+                            kpis.findIndex(it => it == "commits") > -1 ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Commits'
+                                    metric='postgres.xact_commit.count'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "rollback") > -1 ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Rollback'
+                                    metric='postgres.xact_rollback.count'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "dead") > -1  ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='DeadLocks'
+                                    metric='postgres.deadlocks.count'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "fetch") > -1  ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Fetched (index)'
+                                    metric='postgres.tup_fetched.count'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "fetch-total") > -1  ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Fetched (total)'
+                                    metric='postgres.tup_returned.count'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "insert") > -1  ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Inserted'
+                                    metric='postgres.tup_inserted.count'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "update") > -1  ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Updated'
+                                    metric='postgres.tup_updated.count'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "delete") > -1  ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Deleted'
+                                    metric='postgres.tup_deleted.count'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "session") > -1  ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Session'
+                                    metric='postgres.sessions.count'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "session-aban") > -1  ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Session Aban.'
+                                    metric='postgres.sessions_abandoned.count'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+
+                        {
+                            kpis.findIndex(it => it == "session-fatal") > -1  ?
+                            <Flex padding={0} margin={0} className="kdt-content">
+                                <KpiGeneric 
+                                    label='Session Fatal'
+                                    metric='postgres.sessions_fatal.count'
+                                    type='sql:postgres_database' 
+                                    application={kpi}
+                                />
+                            </Flex>
+                            : <></>
+                        }
+                        
                         
                     </Flex>
                 </Flex>
