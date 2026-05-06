@@ -12,6 +12,7 @@ import { Option } from "../form/Select";
 import { Timeframe } from "@dynatrace/strato-components-preview/core";
 import { getDefaultTimeframe } from "../timeframe/DefaultTimeframe";
 import { FilterK8sContextData } from "./FilterK8sContextData";
+import { parseAsTimeframe } from "../utils/queryString";
 
 /** Props do Provider */
 interface FilterK8sContextProps {
@@ -134,8 +135,20 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
         }
   };
 
-  // TIMEFRAME (state local; se quiser, dá pra serializar em query depois)
-  const [timeFrame, setTimeFrame] = useState<Timeframe>(getDefaultTimeframe());
+  // TIMEFRAME sincronizado na URL via nuqs (param: "tf")
+  const [timeFrameRaw, setTimeFrameRaw] = useQueryState<Timeframe>(
+    'tf',
+    parseAsTimeframe.withDefault(getDefaultTimeframe())
+  );
+
+  const setTimeFrame: Dispatch<SetStateAction<Timeframe>> = (upd) => {
+    const next =
+      typeof upd === 'function'
+        ? (upd as (prev: Timeframe) => Timeframe)(timeFrameRaw)
+        : upd;
+    setTimeFrameRaw(next ?? getDefaultTimeframe());
+  };
+
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(
     new Date()
   );
@@ -172,7 +185,7 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
       setFrontKpisSelected,
       
       // time
-      timeFrame,
+      timeFrame: timeFrameRaw,
       setTimeFrame,
 
       // refresh
@@ -192,7 +205,7 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
       frontendsOptions,
       frontendsSelectedRaw,
       frontKpisSelectedRaw,
-      timeFrame,
+      timeFrameRaw,
       autoRefreshMsRaw,
       lastRefreshedAt,
     ]

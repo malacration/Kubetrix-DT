@@ -1,13 +1,20 @@
-import { Timeframe } from "@dynatrace/strato-components-preview";
+import { createParser } from 'nuqs';
+import type { Timeframe, TimeValue } from '@dynatrace/strato-components-preview/core';
 
-export function tfToQuery(tf: Timeframe) {
-    return `${tf.from}-${tf.to}`;          // ex.: 1627683600-1627690800
-  }
-  
-  export function tfFromQuery(s?: string | null): Timeframe | undefined {
-    if (!s) return undefined;
-    const [from, to] = s.split('-').map(Number);
-    if (Number.isNaN(from) || Number.isNaN(to)) return undefined;
-    return { from, to } as Timeframe;
-  }
-  
+const SEP = '~';
+
+export const parseAsTimeframe = createParser<Timeframe>({
+  parse(queryValue: string): Timeframe | null {
+    const parts = queryValue.split(SEP);
+    if (parts.length !== 4) return null;
+    const [fromValue, fromType, toValue, toType] = parts;
+    if (!fromValue || !toValue) return null;
+    return {
+      from: { value: fromValue, type: fromType as TimeValue['type'], absoluteDate: fromValue } as TimeValue,
+      to: { value: toValue, type: toType as TimeValue['type'], absoluteDate: toValue } as TimeValue,
+    };
+  },
+  serialize(tf: Timeframe): string {
+    return [tf.from.value, tf.from.type, tf.to.value, tf.to.type].join(SEP);
+  },
+});
