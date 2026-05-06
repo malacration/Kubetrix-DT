@@ -1,7 +1,14 @@
 import { createParser } from 'nuqs';
 import type { Timeframe, TimeValue } from '@dynatrace/strato-components-preview/core';
+import { parseTimeAsTimeValue } from '@dynatrace-sdk/units';
 
 const SEP = '~';
+
+function resolveAbsoluteDate(value: string, type: string): string {
+  if (type === 'absolute') return value;
+  const resolved = parseTimeAsTimeValue(value, Date.now(), 'minutes');
+  return resolved?.absoluteDate ?? new Date().toISOString();
+}
 
 export const parseAsTimeframe = createParser<Timeframe>({
   parse(queryValue: string): Timeframe | null {
@@ -10,8 +17,16 @@ export const parseAsTimeframe = createParser<Timeframe>({
     const [fromValue, fromType, toValue, toType] = parts;
     if (!fromValue || !toValue) return null;
     return {
-      from: { value: fromValue, type: fromType as TimeValue['type'], absoluteDate: fromValue } as TimeValue,
-      to: { value: toValue, type: toType as TimeValue['type'], absoluteDate: toValue } as TimeValue,
+      from: {
+        value: fromValue,
+        type: fromType as TimeValue['type'],
+        absoluteDate: resolveAbsoluteDate(fromValue, fromType),
+      } as TimeValue,
+      to: {
+        value: toValue,
+        type: toType as TimeValue['type'],
+        absoluteDate: resolveAbsoluteDate(toValue, toType),
+      } as TimeValue,
     };
   },
   serialize(tf: Timeframe): string {
