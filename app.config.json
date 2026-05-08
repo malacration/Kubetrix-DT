@@ -36,6 +36,18 @@
       {
         "name": "app-settings:objects:read",
         "comment": "To read app settings"
+      },
+      {
+        "name": "environment-api:entities:read",
+        "comment": "Leitura de entidades monitoradas (hosts, OneAgent info)"
+      },
+      {
+        "name": "settings:objects:read",
+        "comment": "Leitura de configuracoes de monitoramento"
+      },
+      {
+        "name": "settings:objects:write",
+        "comment": "Ativar e desativar monitoramento de hosts"
       }
     ]
   },

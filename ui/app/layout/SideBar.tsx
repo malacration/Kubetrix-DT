@@ -8,6 +8,7 @@ const exemplos = [
   { label: "Frontend's (KPI)", path: '/dashboards/Frontends' },
   { label: "Postgres DBs (KPI)", path: '/dashboards/Postgres' },
   { label: 'Capacity Optimization', path: '/dashboards/Optimization' },
+  { label: 'OneAgent Deployments', path: '/dashboards/OneAgent' },
 ];
 
 export const SideBar = ({ isDismissed, onDismiss }:{
