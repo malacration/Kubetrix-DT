@@ -317,13 +317,17 @@ const OneAgent = () => {
       accessor: 'reduceToGB',
       sortType: 'number',
       width: { type: 'auto', minWidth: 160, maxWidth: 220 },
-      cell: ({ value }) => {
+      cell: ({ value, rowData }) => {
         if (value == null) {
           return <DataTableV2.DefaultCell><span style={{ color: '#9e9e9e' }}>—</span></DataTableV2.DefaultCell>;
         }
+        const toFree = rowData.physicalMemoryGB - (value as number);
         return (
           <DataTableV2.DefaultCell>
-            <span style={{ color: '#c85c00' }}>{'< '}{fmtGB(value as number)}</span>
+            <span style={{ color: '#c85c00' }}>
+              {'< '}{fmtGB(value as number)}
+              <span style={{ color: '#9e9e9e', fontWeight: 400, fontSize: '0.75rem', marginLeft: 6 }}>(-{fmtGB(toFree)})</span>
+            </span>
           </DataTableV2.DefaultCell>
         );
       },
