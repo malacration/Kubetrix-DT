@@ -225,7 +225,7 @@ const DatabaseMetricsDocs = () => {
         <Text style={{ marginTop: '1rem' }}>
           Catálogo completo (todas as categorias: I/O, CPU, FRA, RAC, ASM, Data Guard, Backup Job,
           Multitenant/PDB, Top N Queries) está versionado no repositório em{' '}
-          <code style={codeStyle}>documents/oracle-database-extension-metrics.md</code>, para consulta ao
+          <code style={codeStyle}>reference-docs/oracle-database-extension-metrics.md</code>, para consulta ao
           construir novos painéis.
         </Text>
       </Flex>
