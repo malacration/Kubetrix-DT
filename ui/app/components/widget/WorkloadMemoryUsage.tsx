@@ -24,40 +24,49 @@ function WorkloadMemoryUsage({ filters, lastRefreshedAt}: ChartProps) {
   useEffect(() => {
     if (!filters) return;
 
+    let cancelled = false;
+
     const load = async () => {
       setLoading(true);
 
       try {
-        const { cluster, namespace, workload, timeframe } = {
+        const { cluster, namespace, workload, timeframe, resolution } = {
           cluster:   filters.cluster?.value,
           namespace: filters.namespace?.value,
           workload:  filters.workload?.value,
           timeframe: filters.timeframe?.value,
+          resolution: filters.resolution?.value,
         };
 
-        const result = await kubernetesWorkload("memory_working_set",cluster, namespace, workload, timeframe, "sum:toUnit(Byte,GibiByte)");
-        const sevenDaysAgo = await kubernetesWorkload("memory_working_set",cluster, namespace, workload, timeframe, "sum:toUnit(Byte,GibiByte)",true);
+        if (!timeframe) return;
+
+        const result = await kubernetesWorkload("memory_working_set",cluster, namespace, workload, timeframe, "sum:toUnit(Byte,GibiByte)", false, undefined, resolution);
+        const sevenDaysAgo = await kubernetesWorkload("memory_working_set",cluster, namespace, workload, timeframe, "sum:toUnit(Byte,GibiByte)",true, undefined, resolution);
 
         const ts   = await result.metricDataToTimeseries(workload);
         const tsAgo  = await sevenDaysAgo.metricDataToTimeseries("7 Days Ago");
-        
+
 
         const limits = await kubernetesWorkload(
-          "limits_memory",cluster, namespace, 
+          "limits_memory",cluster, namespace,
           workload, timeframe,
-          "max:default(0,always):fold(max):toUnit(Byte,GibiByte):last"
+          "max:default(0,always):fold(max):toUnit(Byte,GibiByte):last", false, undefined, resolution
         );
+
+        if (cancelled) return;
+
         setThreshold(limits.getFirstValueOfFirstMetric()?.value ?? 0)
-        
+
         setSeries([...ts,...tsAgo]);
       } catch (err) {
-        console.error('Erro ao buscar métricas', err);
+        if (!cancelled) console.error('Erro ao buscar métricas', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     load();
+    return () => { cancelled = true; };
   }, [filters,lastRefreshedAt]);
 
   useEffect(() => {

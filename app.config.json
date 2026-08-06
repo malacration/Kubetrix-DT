@@ -48,6 +48,14 @@
       {
         "name": "settings:objects:write",
         "comment": "Ativar e desativar monitoramento de hosts"
+      },
+      {
+        "name": "environment-api:problems:read",
+        "comment": "Ler comentarios de problemas"
+      },
+      {
+        "name": "environment-api:problems:write",
+        "comment": "Encerrar problemas e adicionar comentarios"
       }
     ]
   },

@@ -31,7 +31,6 @@ const FailureCountByFrontKPI = ({ front }: ByFrontProp) => {
   
   const funcao = async (front: string, timeframe: Timeframe): Promise<NowBaseline> =>{
     return builtinErrosRateByFront(front,timeframe).then(metricResult => {
-      console.log(metricResult.baseQuery)
       const handdle = new MetricSeriesCollectionHandl()
       const now = handdle.getLast(metricResult.getByMetric("countOfErrors")!);
       return classicBaseLineBy(metricResult,timeframe,"","").then(base => {

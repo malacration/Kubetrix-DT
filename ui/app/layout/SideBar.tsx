@@ -9,6 +9,7 @@ const exemplos = [
   { label: "Postgres DBs (KPI)", path: '/dashboards/Postgres' },
   { label: 'Capacity Optimization', path: '/dashboards/Optimization' },
   { label: 'OneAgent Deployments', path: '/dashboards/OneAgent' },
+  { label: 'Problemas (Davis)', path: '/dashboards/Problems' },
 ];
 
 export const SideBar = ({ isDismissed, onDismiss }:{
@@ -31,6 +32,16 @@ export const SideBar = ({ isDismissed, onDismiss }:{
             {exemplo.label}
           </Button>
         ))}
+
+        <hr style={{ width: '100%', border: 'none', borderTop: '1px solid var(--dt-colors-border-neutral-default, #d0d3da)', margin: '8px 0' }} />
+
+        <Button
+          as={Link}
+          onClick={onDismiss}
+          to={{ pathname: '/dashboards/Docs', search: location.search }}
+        >
+          Documentação
+        </Button>
       </div>
     </Page.Sidebar>
   );

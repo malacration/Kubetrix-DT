@@ -8,7 +8,7 @@ import { MyRoutes } from "./layout/MyRoutes";
 
 
 import { DetailView } from "./layout/DetailView";
-import { FilterK8sContextProvider } from "./components/context/FilterK8sContext";
+import { FilterK8sContextProvider, useSetSidebarDismissed, useSidebarDismissed } from "./components/context/FilterK8sContext";
 import { NuqsAdapter } from "nuqs/dist/_tsup-dts-rollup";
 
 
@@ -20,7 +20,8 @@ import FrontEnds from "./pages/dashboards/Frontends";
 
 export const App = () => {
   const [isDetailViewDismissed, setIsDetailViewDismissed] = useState<boolean>(true);
-  const [isSidebarDismissed, setIsSidebarDismissed] = useState<boolean>(false);
+  const isSidebarDismissed = useSidebarDismissed();
+  const setIsSidebarDismissed = useSetSidebarDismissed();
 
   const toggleSidebar = () => {
     setIsSidebarDismissed(prev => !prev);

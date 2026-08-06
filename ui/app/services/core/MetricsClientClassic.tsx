@@ -18,7 +18,7 @@ export async function clientClassic(
   
   const now = new Date();
   const toTime = timeFrame?.to.absoluteDate ? new Date(timeFrame.to.absoluteDate) : now;
-  const fromTime = timeFrame?.from.absoluteDate ? new Date(timeFrame.from.absoluteDate) : new Date(toTime.getTime() - 2 * 60 * 60 * 1000);
+  const fromTime = timeFrame?.from.absoluteDate ? new Date(timeFrame.from.absoluteDate) : new Date(toTime.getTime() - 7 * 24 * 60 * 60 * 1000);
 
 
   return metricsClient.query({

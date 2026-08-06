@@ -3,7 +3,7 @@ import { clientClassic, MetricResult } from "../core/MetricsClientClassic"
 import { classicBaseLine } from "../builtin/baseLineService";
 import { GrailDqlQuery } from "../core/GrailClient";
 import { QueryResult } from "@dynatrace-sdk/client-query";
-import { pickResolution } from "app/components/timeframe/resolution";
+import { pickResolution, pickBaselineResolution } from "app/components/timeframe/resolution";
 
 export async function getWorkloads(kubernetsCluster = 'all', Namespace = 'all',timeFrame? : Timeframe) {
 
@@ -21,7 +21,7 @@ export async function getWorkloads(kubernetsCluster = 'all', Namespace = 'all',t
 }
 
 
-export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeFrame? : Timeframe, isBaseLine = false) : Promise<QueryResult | { error: string; }>{
+export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeFrame? : Timeframe, isBaseLine = false, resolution? : string) : Promise<QueryResult | { error: string; }>{
   
   const metric = "response_time"
 
@@ -47,11 +47,11 @@ export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeF
   if(allFilters == "")
     filter = ""
 
-  const intervalNow = pickResolution(0,timeFrame)
-  const intervalBase = pickResolution(21,timeFrame)
+  const intervalNow = pickResolution(0,timeFrame,resolution)
+  const intervalBase = pickBaselineResolution(timeFrame,resolution)
 
   const dql = `
-    timeseries 
+    timeseries
       now=avg(dt.service.request.response_time), interval:${intervalNow}
       ${filter}
       | append [
@@ -73,13 +73,14 @@ export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeF
 }
 
 export function  kubernetesWorkload(metricName : string,
-    $kubernetsCluster?, 
-    $Namespace?, 
-    $workload?, 
+    $kubernetsCluster?,
+    $Namespace?,
+    $workload?,
     timeFrame? : Timeframe,
     extra? : string,
     isTimeshift = false,
-    split = ':splitBy()') : Promise<MetricResult>{
+    split = ':splitBy()',
+    resolution? : string) : Promise<MetricResult>{
 
   let clusterFilter = 'eq("k8s.cluster.name","'+$kubernetsCluster+'")'
   if(!$kubernetsCluster || $kubernetsCluster == "all")
@@ -105,18 +106,19 @@ export function  kubernetesWorkload(metricName : string,
     timeshift = ":timeshift(-7d)"
 
   const metricSelector = metric+filter+split+ (extra ? ":"+extra : "")+timeshift;
-  
-  return clientClassic(metricSelector,timeFrame)
+
+  return clientClassic(metricSelector,timeFrame,pickResolution(0,timeFrame,resolution))
 }
 
 export function serviceWorkload(metricName : string,
-  $kubernetsCluster?, 
-  $Namespace?, 
-  $workload?, 
+  $kubernetsCluster?,
+  $Namespace?,
+  $workload?,
   timeFrame? : Timeframe,
   extra? : string,
   isTimeshift = false,
-  plusResolution = 0) : Promise<MetricResult>{
+  plusResolution = 0,
+  resolution? : string) : Promise<MetricResult>{
 
   // eslint-disable-next-line no-secrets/no-secrets
   let clusterFilter = `toRelationship.isClusterOfService(type("KUBERNETES_CLUSTER"),entityName.equals("${$kubernetsCluster}"))`
@@ -150,8 +152,8 @@ export function serviceWorkload(metricName : string,
 
   const metricSelector = metric+split+ (extra ? ":"+extra : "")+timeshift;
 
-  const resolutionNow = pickResolution(7+plusResolution,timeFrame)
-  
+  const resolutionNow = pickResolution(plusResolution,timeFrame,resolution)
+
   return clientClassic(metricSelector,timeFrame,resolutionNow,entrySelector)
 }
 

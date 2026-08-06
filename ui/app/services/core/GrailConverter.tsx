@@ -121,6 +121,59 @@ export function queryResultToTimeseries(
 }
 
 
+/**
+ * Converte o resultado BRUTO do comando `timeseries` do DQL (uma linha por combinação de
+ * dimensões, com um campo array por métrica + `timeframe`/`interval`) diretamente em
+ * `Timeseries[]`, sem passar por `convertQueryResultToTimeseries` (SDK Strato).
+ *
+ * Motivo: para queries simples de uma métrica só (sem `by:`/`append`), a detecção automática do
+ * conversor da Strato não estava desdobrando o campo array em múltiplos pontos — o gráfico
+ * renderizava só 1 ponto em vez da série inteira. Como o formato bruto do DQL é conhecido e
+ * estável (confirmado manualmente contra o tenant: `interval` em nanossegundos, `timeframe.start`
+ * em ISO, `value` como array alinhado aos buckets), montamos os datapoints nós mesmos — sem
+ * depender de heurística de detecção de tipo da biblioteca.
+ */
+export function timeseriesCommandResultToChartSeries(
+  queryResult: QueryResult | { error: string } | null | undefined,
+  seriesName: string,
+  unit?: Timeseries['unit'],
+  valueField = 'value',
+): Timeseries[] {
+  if (!isQueryResult(queryResult)) return [];
+
+  const series: Timeseries[] = [];
+
+  (queryResult.records ?? []).forEach((record) => {
+    if (!record) return;
+
+    const values = record[valueField];
+    if (!Array.isArray(values)) return;
+
+    const timeframe = record['timeframe'] as { start?: string; end?: string } | undefined;
+    const intervalNs = Number(record['interval'] ?? 0);
+    const intervalMs = intervalNs / 1_000_000;
+
+    if (!timeframe?.start || !intervalMs) return;
+
+    const startMs = new Date(timeframe.start).getTime();
+
+    const datapoints = values
+      .map((value, index) => {
+        if (value == null) return null;
+        const start = new Date(startMs + index * intervalMs);
+        const end = new Date(start.getTime() + intervalMs);
+        return { start, end, value: Number(value) };
+      })
+      .filter((dp): dp is { start: Date; end: Date; value: number } => dp !== null);
+
+    if (datapoints.length > 0) {
+      series.push({ name: [seriesName], unit, datapoints });
+    }
+  });
+
+  return series;
+}
+
 export function isQueryResult(obj: unknown): obj is QueryResult {
   return (
     !!obj &&

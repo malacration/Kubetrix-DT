@@ -130,21 +130,26 @@ const KpiCore = ({
 
     const getTrend = (): Trend => {
 
-        if(metricDirection == MetricDirection.none){
-          
-          return {
-            direction: (baselineValue ?? 0) > nowValue! ? 'upward' : 'downward',
-            value: baselineValue ?? 0,
-            label: trendLabel,
-          };
-        }
-          
+        // Guarda única para "sem baseline" (baseline null/NaN, ex: métrica sem histórico
+        // suficiente ainda) — vale para todas as direções, inclusive MetricDirection.none.
+        // Antes só o branch abaixo (HigherIsBetter/LowerIsBetter) tinha essa checagem, então
+        // KPIs com metricDirection=none (ex: os cards do painel Database Metrics) mostravam
+        // literalmente "NaN" no trend quando a extensão não tinha 7/14/21 dias de dado ainda.
         if (
-        baselineValue === null ||
+        baselineValue == null ||
         !isFinite(baselineValue!) ||
         !isFinite(nowValue!)
         ) {
         return { direction: 'neutral', value: 0, label: 'Sem baseline' };
+        }
+
+        if(metricDirection == MetricDirection.none){
+
+          return {
+            direction: baselineValue > nowValue! ? 'upward' : 'downward',
+            value: baselineValue,
+            label: trendLabel,
+          };
         }
 
         const deltaAbs = nowValue! - baselineValue!;
@@ -241,7 +246,7 @@ const KpiCore = ({
                   output: units.percentage.percent,
                 }
               }
-              value={trendAbsolute ? baselineValue! : getTrend().value}
+              value={trendAbsolute ? (Number.isFinite(baselineValue) ? baselineValue! : 0) : getTrend().value}
               label={getTrend().label}
               colorsOverride={getTrendColorsAuto(nowValue!,thresholds,{ downwardOnCritical: 'amber' })}
           />

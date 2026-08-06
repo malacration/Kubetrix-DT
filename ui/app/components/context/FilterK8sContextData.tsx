@@ -37,10 +37,18 @@ export interface FilterK8sContextData {
   timeFrame: Timeframe;
   setTimeFrame: Dispatch<SetStateAction<Timeframe>>;
 
+  // aggregation / resolution ("auto" ou "1m", "5m", "10m", "30m", "1h", "6h", "1d")
+  resolution: string;
+  setResolution: Dispatch<SetStateAction<string>>;
+
   // refresh
   autoRefreshMs: number;
   setAutoRefreshMs: Dispatch<SetStateAction<number>>;
 
   lastRefreshedAt: Date;
   setLastRefreshedAt: Dispatch<SetStateAction<Date>>;
+
+  // layout (sidebar) — permite que telas profundas (ex.: maximizar widget) recolham o menu
+  sidebarDismissed: boolean;
+  setSidebarDismissed: Dispatch<SetStateAction<boolean>>;
 }

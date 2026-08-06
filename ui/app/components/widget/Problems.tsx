@@ -74,15 +74,18 @@ function Problems({ filters, lastRefreshedAt}: ChartProps) {
   useEffect(() => {
     if (!filters) return;
 
+    const { cluster, namespace, workload, timeframe } = {
+      cluster:   filters.cluster?.value,
+      namespace: filters.namespace?.value,
+      workload:  filters.workload?.value,
+      timeframe: filters.timeframe?.value,
+    };
+
+    if (!timeframe) return;
+
     const load = async () => {
       setLoading(true);
-      const { cluster, namespace, workload, timeframe } = {
-        cluster:   filters.cluster?.value,
-        namespace: filters.namespace?.value,
-        workload:  filters.workload?.value,
-        timeframe: filters.timeframe?.value,
-      };
-      
+
       ProblemsGetActive(cluster,namespace,workload,timeframe).then(it => {
         if(it?.records)
           setProblems(it?.records.map(it => normalizeRecord(it)))

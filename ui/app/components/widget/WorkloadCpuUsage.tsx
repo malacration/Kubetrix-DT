@@ -25,30 +25,38 @@ function WorkloadCpuUsage({ filters}: ChartProps, desejado : boolean = false) {
   useEffect(() => {
     if (!filters) return;
 
+    let cancelled = false;
+
     const load = async () => {
       setLoading(true);
 
       try {
-        const { cluster, namespace, workload, timeframe } = {
+        const { cluster, namespace, workload, timeframe, resolution } = {
           cluster:   filters.cluster?.value,
           namespace: filters.namespace?.value,
           workload:  filters.workload?.value,
           timeframe: filters.timeframe?.value,
+          resolution: filters.resolution?.value,
         };
 
-        const result = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)");
-        const sevenDaysAgo = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)",true);
-        const throttled = await kubernetesWorkload("cpu_throttled",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)");
+        if (!timeframe) return;
+
+        const result = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)", false, undefined, resolution);
+        const sevenDaysAgo = await kubernetesWorkload("cpu_usage",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)",true, undefined, resolution);
+        const throttled = await kubernetesWorkload("cpu_throttled",cluster, namespace, workload, timeframe, "sum:toUnit(MilliCores,Cores)", false, undefined, resolution);
 
         const ts   = await result.metricDataToTimeseries(workload?.toString()?? "All");
         const tsAgo   = await sevenDaysAgo.metricDataToTimeseries("7 Days Ago");
         const tsThrottled   = await throttled.metricDataToTimeseries("Throttled");
 
-        
+
         const limits = await kubernetesWorkload(
           "limits_cpu",cluster, namespace, workload, timeframe,
-          "max:toUnit(MilliCores,Cores):last"
+          "max:fold(max):toUnit(MilliCores,Cores):last", false, undefined, resolution
         );
+
+        if (cancelled) return;
+
         setThreshold(limits.getFirstValueOfFirstMetric()?.value ?? 0)
 
         if(desejado){
@@ -58,13 +66,14 @@ function WorkloadCpuUsage({ filters}: ChartProps, desejado : boolean = false) {
         setSeries([...ts,...tsAgo,]);
         setThrottled(tsThrottled[0]);
       } catch (err) {
-        console.error('Erro ao buscar métricas', err);
+        if (!cancelled) console.error('Erro ao buscar métricas', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     load();
+    return () => { cancelled = true; };
   }, [filters]);
 
   useEffect(() => {
@@ -95,11 +104,13 @@ function WorkloadCpuUsage({ filters}: ChartProps, desejado : boolean = false) {
     >
         {throttled ? <TimeseriesChart.Bar data={throttled}  /> : <></>}
         <TimeseriesChart.YAxis min={min} max={max} />
+        {showThreshold && (
           <TimeseriesChart.Threshold
             data={{ value: threshold }}
             color={Colors.Charts.Threshold.Bad.Default}
             label="Limits"
           />
+        )}
         <TimeseriesChart.Legend position="bottom" />
       </TimeseriesChart>
       </div>

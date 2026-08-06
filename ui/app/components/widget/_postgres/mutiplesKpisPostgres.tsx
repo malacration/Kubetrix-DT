@@ -34,7 +34,7 @@ const MutiplesKpisPostgres = () => {
                 <Flex padding={0} margin={0} className="kdt-container">
                     <Flex padding={0} margin={0} className="kdt-row kdt-row--tall">
                         <Flex className="kdt-badge">
-                            <h4 className="kdt-badge__title">{removeParenthesesContent(kpi)}</h4>
+                            <h4 className="kdt-badge__title" title={kpi}>{removeParenthesesContent(kpi)}</h4>
                         </Flex>
                         {
                             kpis.findIndex(it => it == "sessions-count") > -1 ? 

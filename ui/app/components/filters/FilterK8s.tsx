@@ -8,10 +8,11 @@ import { NameSpaceSelection } from './properties/NameSpacesSelect';
 import { WorkloadsSelection } from './properties/WorkloadsSelect';
 import { TimeFrame } from '../timeframe/Timeframe';
 import { getDefaultTimeframe } from '../timeframe/DefaultTimeframe';
+import { RESOLUTION_OPTIONS } from '../timeframe/resolution';
 import { FilterBarProps } from '../dashboard/DashBoard';
 import { SelectComponent } from '../form/Select';
 import { useSearchParams } from 'react-router-dom';
-import { useAutoRefreshMs, useClusterSelected, useNamespaceSelected, useSetAutoRefreshMs, useSetClusterSelected, useSetNamespaceSelected, useSetTimeFrame, useSetWorkloadSelected, useTimeFrame, useWorkloadSelected } from '../context/FilterK8sContext';
+import { useAutoRefreshMs, useClusterSelected, useNamespaceSelected, useResolution, useSetAutoRefreshMs, useSetClusterSelected, useSetNamespaceSelected, useSetResolution, useSetTimeFrame, useSetWorkloadSelected, useTimeFrame, useWorkloadSelected } from '../context/FilterK8sContext';
 
 function mergeFilterValues(prev: FilterItemValues, next: FilterItemValues): FilterItemValues {
   const merged = { ...prev };
@@ -33,14 +34,17 @@ export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
   const timeframe = useSetTimeFrame()
   const setAutoRefreshMs = useSetAutoRefreshMs()
   const autoRefresh = useAutoRefreshMs()
-  
-  
+  const setResolutionSelecionado = useSetResolution()
+  const resolution = useResolution()
+
+
 
   const [allProps, setAllProps] = useState<FilterItemValues>({
     cluster:   { value: useClusterSelected() },
     namespace: { value: useNamespaceSelected() },
     workload:  { value: useWorkloadSelected() },
     timeframe: { value: useTimeFrame() },
+    resolution: { value: useResolution() },
   });
 
   useEffect(() => {
@@ -61,6 +65,9 @@ export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
 
         if (typeof props.workload?.value === 'string')
           setWorkloadSelecionado(props.workload.value);
+
+        if (typeof props.resolution?.value === 'string')
+          setResolutionSelecionado(props.resolution.value);
 
         // tempo de auto-refresh
         const maybeTime = Number(props.time?.value);
@@ -85,6 +92,14 @@ export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
 
       <FilterBar.Item name="timeframe" label="timeframe">
         <TimeFrame />
+      </FilterBar.Item>
+
+      <FilterBar.Item name="resolution" label="Resolution">
+        <SelectComponent
+          defaultValue={resolution}
+          options={RESOLUTION_OPTIONS}
+          clearable={false}
+        />
       </FilterBar.Item>
 
       <FilterBar.Item name="time" label="Auto Refresh">

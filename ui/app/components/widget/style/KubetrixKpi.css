@@ -13,30 +13,48 @@
 }
 
 .kdt-row--tall {
-  height: 8.5em;
+  height: 9.5em;
 }
 
-/* “Badge” à esquerda (o rótulo do frontend) */
+/* “Badge” à esquerda (o rótulo do frontend / instância de banco) */
 .kdt-badge {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
 
-  padding: 0 0.5em;
+  padding: 0.25em 0.5em;
+  box-sizing: border-box;
 
   /* cor neutra — token de charts/status; cai para neutro se não existir */
   background-color: var(--dt-colors-charts-status-neutral-default, var(--dt-colors-background-field-neutral-emphasized, #e4e5eb));
   color: var(--dt-colors-text-neutral-on-accent-default);
   min-width: 6em;
+  max-width: 9em;
   overflow-wrap: break-word;
   word-wrap: break-word;
   hyphens: auto;
 }
 
-/* .kdt-badge__title {
-  margin: 0 0 var(--dt-spacings-size-4, 4px) 0;
-} */
+.kdt-badge__title {
+  margin: 0;
+  width: 100%;
+  font-size: 0.75em;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.kdt-badge__subtitle {
+  font-size: 0.7em;
+  opacity: 0.75;
+  text-align: center;
+}
 
 /* Área do gráfico/conteúdo à direita */
 .kdt-content {

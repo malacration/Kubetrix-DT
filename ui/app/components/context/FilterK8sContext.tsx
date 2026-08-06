@@ -63,6 +63,19 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
     parseAsInteger.withDefault(300000)
   );
 
+  const [resolutionRaw, setResolutionRaw] = useQueryState(
+    "res",
+    parseAsString.withDefault("auto")
+  );
+
+  const setResolution: Dispatch<SetStateAction<string>> = (upd) => {
+    const next =
+      typeof upd === "function"
+        ? (upd as (prev: string) => string)(resolutionRaw)
+        : upd;
+    setResolutionRaw(next ?? "auto");
+  };
+
   const [frontendsSelectedRaw, setFrontendsSelectedRaw] = useQueryState<string[]>('front',
     parseAsArrayOf(parseAsString).withDefault(['all'])
   );
@@ -153,6 +166,8 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
     new Date()
   );
 
+  const [sidebarDismissed, setSidebarDismissed] = useState<boolean>(false);
+
   const value = useMemo<FilterK8sContextData>(
     () => ({
       // cluster
@@ -188,12 +203,20 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
       timeFrame: timeFrameRaw,
       setTimeFrame,
 
+      // aggregation
+      resolution: resolutionRaw,
+      setResolution,
+
       // refresh
       autoRefreshMs: autoRefreshMsRaw,
       setAutoRefreshMs,
       lastRefreshedAt,
       setLastRefreshedAt,
-      
+
+      // layout
+      sidebarDismissed,
+      setSidebarDismissed,
+
     }),
     [
       clusterOptions,
@@ -206,8 +229,10 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
       frontendsSelectedRaw,
       frontKpisSelectedRaw,
       timeFrameRaw,
+      resolutionRaw,
       autoRefreshMsRaw,
       lastRefreshedAt,
+      sidebarDismissed,
     ]
   );
 
@@ -239,6 +264,11 @@ export const useTimeFrame = () =>
 export const useSetTimeFrame = () =>
   useContextSelector(FilterK8sContext, (v) => v.setTimeFrame);
 
+export const useResolution = () =>
+  useContextSelector(FilterK8sContext, (v) => v.resolution);
+export const useSetResolution = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setResolution);
+
 export const useAutoRefreshMs = () =>
   useContextSelector(FilterK8sContext, (v) => v.autoRefreshMs);
 
@@ -250,6 +280,12 @@ export const useLastRefreshedAt = () =>
 
 export const useSetLastRefreshedAt = () =>
   useContextSelector(FilterK8sContext, (v) => v.setLastRefreshedAt);
+
+export const useSidebarDismissed = () =>
+  useContextSelector(FilterK8sContext, (v) => v.sidebarDismissed);
+
+export const useSetSidebarDismissed = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setSidebarDismissed);
 
 // NEW: selectors para options
 export const useClusterOptions = () =>

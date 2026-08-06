@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ChartProps } from '../../filters/BarChartProps';
 import { useMemo } from 'react';
 import { Flex } from '@dynatrace/strato-components/layouts';
+import { Button } from '@dynatrace/strato-components/buttons';
+import { DocumentIcon } from '@dynatrace/strato-icons';
 import {
   DataTableV2,
   type DataTableV2ColumnDef,
@@ -9,9 +11,13 @@ import {
 import { Link } from '@dynatrace/strato-components/typography';
 import { getCallServices } from 'app/services/services';
 import { getEnvironmentUrl } from '@dynatrace-sdk/app-environment';
-import { timeFormatter, countFormatter, microToMileSeconds, countAbreviation } from './formater';
+import { openDashboardInNewTab } from 'app/services/core/appUrl';
+import { timeFormatter, countFormatter, microToMileSeconds, countAbreviation, shareFormatter, latencyImpactFormatter } from './formater';
 import { Trend } from './Trend';
+import { withServiceContributions } from 'app/model/ServiceContribution';
 
+// Slug precisa bater com uma entrada de app/services/core/docsRegistry.tsx.
+const DOCS_PAGE_SLUG = 'service-contribution-docs';
 
 const normalizeRecord = (r: any) => ({
   name: r['entity.name'],
@@ -24,7 +30,7 @@ function CallServices({ filters, allowAll = false }: CallServicesProps) {
   
   const url = getEnvironmentUrl();
 
-  const [problems, setProblems] = useState<[]>([]);
+  const [problems, setProblems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const cluster = filters?.cluster?.value;
@@ -104,9 +110,20 @@ function CallServices({ filters, allowAll = false }: CallServicesProps) {
         accessor: 'baseCount', id: 'baseCount', header: 'Base Throughput', 
         formatter:countFormatter, width: { type: 'auto',maxWidth: 180 }, sortType:"number" 
       },
-      { 
-        accessor: 'diffCount', id: 'diffCount', header: 'Diff Throughput', 
-        formatter:countFormatter, width: { type: 'auto',maxWidth: 180 }, sortType:"number" 
+      {
+        accessor: 'throughputShare', id: 'throughputShare', header: 'Fatia Throughput',
+        width: { type: 'auto', maxWidth: 140 }, alignment: 'center', sortType: 'number',
+        cell: ({ value }) => <DataTableV2.DefaultCell>{shareFormatter(value)}</DataTableV2.DefaultCell>,
+      },
+      {
+        accessor: 'loadShare', id: 'loadShare', header: "Carga (Little's Law)",
+        width: { type: 'auto', maxWidth: 160 }, alignment: 'center', sortType: 'number',
+        cell: ({ value }) => <DataTableV2.DefaultCell>{shareFormatter(value)}</DataTableV2.DefaultCell>,
+      },
+      {
+        accessor: 'latencyImpact', id: 'latencyImpact', header: 'Impacto na Latência Média',
+        width: { type: 'auto', maxWidth: 180 }, alignment: 'center', sortType: 'number',
+        cell: ({ value }) => <DataTableV2.DefaultCell>{latencyImpactFormatter(value)}</DataTableV2.DefaultCell>,
       },
     ],
     []
@@ -119,8 +136,10 @@ function CallServices({ filters, allowAll = false }: CallServicesProps) {
       setLoading(true);
       getCallServices(cluster,namespace,workload,timeframe).then(it => {
         if(it?.records){
-          setProblems(it?.records.map(it => normalizeRecord(it)))
-          console.log(problems)
+          const normalized = it?.records.map(it => normalizeRecord(it));
+          // Totais calculados só dentro desta categoria (Called Services outside
+          // of the namespace) — nunca combinar com os registros de Services.
+          setProblems(withServiceContributions(normalized))
         }
         setLoading(false);
       })
@@ -129,6 +148,14 @@ function CallServices({ filters, allowAll = false }: CallServicesProps) {
 
   return (
     <div>
+      <Flex justifyContent="flex-end" style={{ marginBottom: 8 }}>
+        <Button onClick={() => openDashboardInNewTab(DOCS_PAGE_SLUG)}>
+          <Button.Prefix>
+            <DocumentIcon />
+          </Button.Prefix>
+          Documentação
+        </Button>
+      </Flex>
       <Flex height={300}>
         <DataTableV2
           data={problems}

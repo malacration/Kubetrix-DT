@@ -20,17 +20,20 @@ function WorkloadResponseTime({ filters, title = "windson" }: ChartProps) {
   useEffect(() => {
     if (!filters) return;
 
-    const { cluster, namespace, workload, timeframe } = {
+    const { cluster, namespace, workload, timeframe, resolution } = {
       cluster:   filters.cluster?.value,
       namespace: filters.namespace?.value,
       workload:  filters.workload?.value,
       timeframe: filters.timeframe?.value,
+      resolution: filters.resolution?.value,
     };
+
+    if (!timeframe) return;
 
     const load = async () => {
       setLoading(true);
       try {
-        const result = await responseTime(cluster, namespace, workload, timeframe);
+        const result = await responseTime(cluster, namespace, workload, timeframe, false, resolution);
         if(isQueryResult(result)){
           const timeSeries = convertQueryResultToTimeseries(result)
           timeSeries.forEach(it => it.unit = units.time.microsecond)

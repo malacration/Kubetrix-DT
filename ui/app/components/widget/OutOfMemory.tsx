@@ -21,6 +21,8 @@ function OutOfMemory({ filters, lastRefreshedAt}: ChartProps) {
       timeframe: filters.timeframe?.value,
     };
 
+    if (!timeframe) return;
+
     const load = async () => {
       setLoading(true);
       try {

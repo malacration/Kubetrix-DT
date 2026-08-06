@@ -1,13 +1,17 @@
-import { Select } from '@dynatrace/strato-components-preview/forms';
+import { Select, type FormControlWithOverlayRef } from '@dynatrace/strato-components-preview/forms';
 
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, forwardRef} from 'react';
 
 
 /** utilitário para ver se um value está na lista de opções */
 const optionExists = (value: string, options: Option[]) =>
   options.some((o) => o.value === value);
 
-export const SelectComponent = (select: SelectInterface) => {
+// forwardRef: o FilterBar (e outros wrappers) injeta um ref no filho de cada
+// FilterBar.Item para controlar foco/posicionamento do dropdown. Sem isso, o
+// React avisa "Function components cannot be given refs" toda vez que este
+// componente é usado dentro de um FilterBar.Item (ex.: "Resolution", "Auto Refresh").
+export const SelectComponent = forwardRef<FormControlWithOverlayRef<HTMLDivElement>, SelectInterface>((select, ref) => {
   const {
     options,
     defaultValue,
@@ -48,6 +52,7 @@ export const SelectComponent = (select: SelectInterface) => {
 
   return (
     (<Select
+      ref={ref}
       value={selected}
       onChange={handleChange}
       multiple={multiple}
@@ -64,7 +69,10 @@ export const SelectComponent = (select: SelectInterface) => {
       </Select.Content>
     </Select>)
   );
-};
+});
+
+// @ts-expect-error o tipo inferido de forwardRef aqui não expõe displayName, mas a propriedade existe em runtime
+SelectComponent.displayName = 'SelectComponent';
 
 
 class SelectInterface {

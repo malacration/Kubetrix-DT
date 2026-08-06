@@ -5,6 +5,7 @@ import { GridIcon, MenuIcon, PlusIcon, SettingIcon } from "@dynatrace/strato-ico
 import { Button } from '@dynatrace/strato-components/buttons';
 
 import { TimeFrame } from '../components/timeframe/Timeframe'
+import { getDashboardUrl } from '../services/core/appUrl';
 
 type Props = {
   onToggleSetting: () => void;
@@ -48,6 +49,12 @@ export const Header = ({ onToggleSetting, onToggleMenu }: Props) => {
               {
                 label: 'Dynatrace Hub',
                 href: 'link/to/hub',
+                target: '_blank',
+                onSelect: () => undefined,
+              },
+              {
+                label: 'Métricas de Banco de Dados (Oracle/PostgreSQL)',
+                href: getDashboardUrl('database-metrics-docs'),
                 target: '_blank',
                 onSelect: () => undefined,
               },

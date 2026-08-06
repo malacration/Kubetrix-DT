@@ -20,18 +20,21 @@ function WorkloadThroughput({ filters}: ChartProps) {
   useEffect(() => {
     if (!filters) return;
 
-    const { cluster, namespace, workload, timeframe } = {
+    const { cluster, namespace, workload, timeframe, resolution } = {
       cluster:   filters.cluster?.value,
       namespace: filters.namespace?.value,
       workload:  filters.workload?.value,
       timeframe: filters.timeframe?.value,
+      resolution: filters.resolution?.value,
     };
+
+    if (!timeframe) return;
 
     const load = async () => {
       setLoading(true);
       try {
-        const throughputMetric = await serviceWorkload("requestCount.server",cluster, namespace, workload, timeframe,"sum",false,14);
-        const throughputMetricSevenDaysAgo = await classicBaseLineBy(throughputMetric,timeframe,"","",1,7);
+        const throughputMetric = await serviceWorkload("requestCount.server",cluster, namespace, workload, timeframe,"sum",false,0,resolution);
+        const throughputMetricSevenDaysAgo = await classicBaseLineBy(throughputMetric,timeframe,"","",1,resolution);
 
         const timeSeries  = await throughputMetric.metricDataToTimeseries("Throughput","Count");
         const timeSeriesSevenDaysAgo   = await throughputMetricSevenDaysAgo.metricDataToTimeseries("Baseline","Count");

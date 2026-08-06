@@ -3,7 +3,7 @@ import { clientClassic, MetricResult } from "../core/MetricsClientClassic"
 import { classicBaseLine } from "../builtin/baseLineService";
 import { GrailDqlQuery } from "../core/GrailClient";
 import { QueryResult } from "@dynatrace-sdk/client-query";
-import { pickResolution } from "app/components/timeframe/resolution";
+import { pickResolution, pickBaselineResolution } from "app/components/timeframe/resolution";
 
 export async function getWorkloads(kubernetsCluster = 'all', Namespace = 'all',timeFrame? : Timeframe) {
 
@@ -27,9 +27,9 @@ export function  serviceMetricByApplicationName(applicationName : string,timeFra
   
   const filter = `, filter: in(dt.entity.service, classicEntitySelector("type(SERVICE),toRelationship.CALLS(type(APPLICATION),entityName.equals(${applicationName}))"))`
   const intervalNow = pickResolution(0,timeFrame)
-  const intervalBase = pickResolution(21,timeFrame)
+  const intervalBase = pickBaselineResolution(timeFrame)
   const dql = `
-    timeseries 
+    timeseries
       nowScalar = ${aggregation}(${metric}, scalar: true), interval:${intervalNow}
       ${filter}
       | append [
@@ -43,7 +43,7 @@ export function  serviceMetricByApplicationName(applicationName : string,timeFra
             timeseries baselineScalar = ${aggregation}(${metric}, scalar: true), shift:-21d, interval:${intervalBase}
             ${filter}
         ]
-        | summarize baselineScalar = avg(baselineScalar), by:{ timeframe, interval }
+        | summarize baselineScalar = median(baselineScalar), by:{ timeframe, interval }
         | fieldsKeep timeframe, interval, baselineScalar
       ]
   `
@@ -58,9 +58,9 @@ export function  responseTimePercentilByApplicationName(
   
   const filter = `, filter: in(dt.entity.service, classicEntitySelector("type(SERVICE),toRelationship.CALLS(type(APPLICATION),entityName.equals(${applicationName}))"))`
   const intervalNow = pickResolution(0,timeFrame)
-  const intervalBase = pickResolution(21,timeFrame)
+  const intervalBase = pickBaselineResolution(timeFrame)
   const dql = `
-    timeseries 
+    timeseries
       now=percentile(dt.service.request.response_time,${p}), nowScalar = percentile(dt.service.request.response_time, ${p}, scalar: true), interval:${intervalNow}
       ${filter}
       | append [
@@ -74,7 +74,7 @@ export function  responseTimePercentilByApplicationName(
             timeseries baseline = percentile(dt.service.request.response_time,${p}), baselineScalar = percentile(dt.service.request.response_time, ${p}, scalar: true), shift:-21d, interval:${intervalBase}
             ${filter}
         ]
-        | summarize baseline = avg(baseline[]), baselineScalar = avg(baselineScalar), by:{ timeframe, interval }
+        | summarize baseline = avg(baseline[]), baselineScalar = median(baselineScalar), by:{ timeframe, interval }
         | fieldsKeep timeframe, interval, baseline, baselineScalar
       ]
   `

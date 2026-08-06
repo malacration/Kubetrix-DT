@@ -34,3 +34,20 @@ export function countAbreviation(valueInMicros){
         maximumFractionDigits: 3,
     })
 }
+
+/** Formata uma fatia 0–1 (ex.: throughputShare, loadShare) como percentual. */
+export function shareFormatter(value: number): string {
+    if (value == null || Number.isNaN(value)) return '-';
+    return `${(value * 100).toFixed(1)}%`;
+}
+
+/**
+ * Formata o impacto marginal de latência (microssegundos, pode ser negativo)
+ * com sinal explícito: "+" = puxa a média geral para cima, "−" = para baixo.
+ */
+export function latencyImpactFormatter(valueInMicros: number): string {
+    if (valueInMicros == null || Number.isNaN(valueInMicros)) return '-';
+    if (valueInMicros === 0) return microToMileSeconds(0);
+    const sign = valueInMicros > 0 ? '+' : '−';
+    return `${sign}${microToMileSeconds(Math.abs(valueInMicros))}`;
+}
