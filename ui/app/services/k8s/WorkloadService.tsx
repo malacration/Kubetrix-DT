@@ -21,8 +21,8 @@ export async function getWorkloads(kubernetsCluster = 'all', Namespace = 'all',t
 }
 
 
-export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeFrame? : Timeframe, isBaseLine = false, resolution? : string) : Promise<QueryResult | { error: string; }>{
-  
+export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeFrame? : Timeframe, isBaseLine = false, resolution? : string, aggregation : 'avg' | 'median' = 'median') : Promise<QueryResult | { error: string; }>{
+
   const metric = "response_time"
 
   let clusterFilter = `matchesValue(k8s.cluster.name, "${$kubernetsCluster}")`
@@ -49,23 +49,50 @@ export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeF
 
   const { now: intervalNow, baseline: intervalBase } = pickPairedResolutions(timeFrame,resolution)
 
+  // "now" e baseline seguem a mesma agregação (avg ou median), escolhida pelo
+  // toggle do widget. median(...) precisa de rollup: (median/percentile/percentRank
+  // exigem, senão a query volta vazia em silêncio); avg(...) não precisa.
+  const nowAgg = aggregation === 'median'
+    ? 'median(dt.service.request.response_time, rollup: avg)'
+    : 'avg(dt.service.request.response_time)'
+  const bucketAgg = nowAgg // mesma expressão por bucket nas 3 janelas da baseline
+
+  // Combinação das 3 semanas (7d/14d/21d) em um único valor de baseline:
+  // - avg: summarize direto com avg(baseline[]) (forma iterativa suportada).
+  // - median: summarize só suporta median() na forma escalar, não na iterativa
+  //   (campo[]) — testado, dá erro ITERATIVE_EXPRESSION_FOR_AGGREGATION_FUNCTIONS.
+  //   Como são sempre exatamente 3 valores, sum-min-max sobra o valor do meio —
+  //   ou seja, a própria mediana — sem precisar de mediana iterativa nativa (que a
+  //   API não suporta aqui). Ressalva: se um bucket tiver só 2 dos 3 valores (ex.:
+  //   workload que não existia 21 dias atrás), a conta não é mais a mediana
+  //   correta desse bucket.
+  const combineBaseline = aggregation === 'median'
+    ? `| summarize {
+            baseline_sum = sum(baseline[]),
+            baseline_min = min(baseline[]),
+            baseline_max = max(baseline[])
+          }, by:{ timeframe, interval }
+        | fieldsAdd baseline = iCollectArray(baseline_sum[] - baseline_min[] - baseline_max[])
+        | fieldsKeep timeframe, interval, baseline`
+    : `| summarize baseline = avg(baseline[]), by:{ timeframe, interval }
+        | fieldsKeep timeframe, interval, baseline`
+
   const dql = `
     timeseries
-      now=avg(dt.service.request.response_time), interval:${intervalNow}
+      now=${nowAgg}, interval:${intervalNow}
       ${filter}
       | append [
-          timeseries baseline = avg(dt.service.request.response_time), shift:-7d, interval:${intervalBase}
+          timeseries baseline = ${bucketAgg}, shift:-7d, interval:${intervalBase}
           ${filter}
         | append [
-            timeseries baseline = avg(dt.service.request.response_time), shift:-14d, interval:${intervalBase}
+            timeseries baseline = ${bucketAgg}, shift:-14d, interval:${intervalBase}
             ${filter}
         ]
         | append [
-            timeseries baseline = avg(dt.service.request.response_time), shift:-21d, interval:${intervalBase}
+            timeseries baseline = ${bucketAgg}, shift:-21d, interval:${intervalBase}
             ${filter}
         ]
-        | summarize baseline = avg(baseline[]), by:{ timeframe, interval }
-        | fieldsKeep timeframe, interval, baseline
+        ${combineBaseline}
       ]
   `
   return GrailDqlQuery(dql,timeFrame)

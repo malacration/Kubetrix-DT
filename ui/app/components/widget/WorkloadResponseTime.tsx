@@ -9,17 +9,41 @@ import { DQLResultConverter, convertQueryResultToTimeseries, convertToTimeseries
 import { convert, units } from "@dynatrace-sdk/units";
 import { ThumbsDownIcon, ViewIcon } from '@dynatrace/strato-icons';
 import { isQueryResult, queryResultToTimeseries } from 'app/services/core/GrailConverter';
-import { BASELINE_LABEL, currentBaselinePalette } from './style/ChartColors';
+import { BASELINE_LABEL, CHART_COLORS } from './style/ChartColors';
+import { Button } from '@dynatrace/strato-components/buttons';
 
-const CURRENT_LABEL = 'Tempo de Resposta';
+// "now" e baseline sempre usam a mesma agregação (avg ou median), escolhida pelo
+// toggle abaixo — ver k8s/WorkloadService.tsx#responseTime(). Rótulo muda junto pra
+// deixar claro qual estatística está no gráfico.
+function currentLabel(aggregation: 'avg' | 'median') {
+  return aggregation === 'median' ? 'Tempo de Resposta · p(50)' : 'Tempo de Resposta · média';
+}
+function baselineLabel(aggregation: 'avg' | 'median') {
+  return aggregation === 'median' ? `${BASELINE_LABEL} · p(50)` : `${BASELINE_LABEL} · média`;
+}
+
+// Preferência do usuário — lembra a escolha entre sessões/recarregamentos.
+const AGGREGATION_STORAGE_KEY = 'kubetrix.responseTime.aggregation';
+
+function loadStoredAggregation(): 'avg' | 'median' {
+  const stored = localStorage.getItem(AGGREGATION_STORAGE_KEY);
+  return stored === 'avg' ? 'avg' : 'median';
+}
 
 
 function WorkloadResponseTime({ filters, title = "windson" }: ChartProps) {
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [loading, setLoading] = useState(false);
+  const [aggregation, setAggregation] = useState<'avg' | 'median'>(loadStoredAggregation);
+
+  useEffect(() => {
+    localStorage.setItem(AGGREGATION_STORAGE_KEY, aggregation);
+  }, [aggregation]);
 
   useEffect(() => {
     if (!filters) return;
+
+    let cancelled = false;
 
     const { cluster, namespace, workload, timeframe, resolution } = {
       cluster:   filters.cluster?.value,
@@ -31,10 +55,13 @@ function WorkloadResponseTime({ filters, title = "windson" }: ChartProps) {
 
     if (!timeframe) return;
 
+    const current = currentLabel(aggregation);
+    const baseline = baselineLabel(aggregation);
+
     const load = async () => {
       setLoading(true);
       try {
-        const result = await responseTime(cluster, namespace, workload, timeframe, false, resolution);
+        const result = await responseTime(cluster, namespace, workload, timeframe, false, resolution, aggregation);
         if(isQueryResult(result)){
           const timeSeries = convertQueryResultToTimeseries(result)
           timeSeries.forEach(it => {
@@ -42,31 +69,43 @@ function WorkloadResponseTime({ filters, title = "windson" }: ChartProps) {
             // Os campos da query DQL se chamam "now"/"baseline" — renomeados aqui pros
             // rótulos padrão do app (mesmos usados nos demais gráficos de workload).
             const key = Array.isArray(it.name) ? it.name.join(' | ') : it.name;
-            if (key === 'now') it.name = CURRENT_LABEL;
-            else if (key === 'baseline') it.name = BASELINE_LABEL;
+            if (key === 'now') it.name = current;
+            else if (key === 'baseline') it.name = baseline;
           })
-          setSeries(timeSeries)
+          if (!cancelled) setSeries(timeSeries)
         }
       } catch (err) {
-        console.error('Erro ao buscar métricas', err);
+        if (!cancelled) console.error('Erro ao buscar métricas', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     load();
-  }, [filters]);
+    return () => { cancelled = true; };
+  }, [filters, aggregation]);
 
   return (
-    <TimeseriesChart
-      loading={loading}
-      data={series}
-      truncationMode={"start"}
-      curve="smooth"
-      colorPalette={currentBaselinePalette(CURRENT_LABEL)}
-    >
-      <TimeseriesChart.Legend position="bottom" />
-    </TimeseriesChart>
+    <div>
+      <Button
+        color="primary" variant="accent"
+        onClick={() => setAggregation(a => (a === 'median' ? 'avg' : 'median'))}
+      >
+        {aggregation === 'median' ? 'Usar média' : 'Usar mediana (p50)'}
+      </Button>
+      <TimeseriesChart
+        loading={loading}
+        data={series}
+        truncationMode={"start"}
+        curve="smooth"
+        colorPalette={{
+          [currentLabel(aggregation)]: CHART_COLORS.current,
+          [baselineLabel(aggregation)]: CHART_COLORS.baseline,
+        }}
+      >
+        <TimeseriesChart.Legend position="bottom" />
+      </TimeseriesChart>
+    </div>
   );
 }
 
