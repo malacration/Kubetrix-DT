@@ -3,7 +3,7 @@ import { clientClassic, MetricResult } from "../core/MetricsClientClassic"
 import { classicBaseLine } from "../builtin/baseLineService";
 import { GrailDqlQuery } from "../core/GrailClient";
 import { QueryResult } from "@dynatrace-sdk/client-query";
-import { pickResolution, pickBaselineResolution } from "app/components/timeframe/resolution";
+import { pickResolution, pickPairedResolutions } from "app/components/timeframe/resolution";
 
 export async function getWorkloads(kubernetsCluster = 'all', Namespace = 'all',timeFrame? : Timeframe) {
 
@@ -47,8 +47,7 @@ export function  responseTime($kubernetsCluster?, $Namespace?, $workload?, timeF
   if(allFilters == "")
     filter = ""
 
-  const intervalNow = pickResolution(0,timeFrame,resolution)
-  const intervalBase = pickBaselineResolution(timeFrame,resolution)
+  const { now: intervalNow, baseline: intervalBase } = pickPairedResolutions(timeFrame,resolution)
 
   const dql = `
     timeseries

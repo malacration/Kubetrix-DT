@@ -9,8 +9,9 @@ import { DQLResultConverter, convertQueryResultToTimeseries, convertToTimeseries
 import { convert, units } from "@dynatrace-sdk/units";
 import { ThumbsDownIcon, ViewIcon } from '@dynatrace/strato-icons';
 import { isQueryResult, queryResultToTimeseries } from 'app/services/core/GrailConverter';
+import { BASELINE_LABEL, currentBaselinePalette } from './style/ChartColors';
 
-
+const CURRENT_LABEL = 'Tempo de Resposta';
 
 
 function WorkloadResponseTime({ filters, title = "windson" }: ChartProps) {
@@ -36,7 +37,14 @@ function WorkloadResponseTime({ filters, title = "windson" }: ChartProps) {
         const result = await responseTime(cluster, namespace, workload, timeframe, false, resolution);
         if(isQueryResult(result)){
           const timeSeries = convertQueryResultToTimeseries(result)
-          timeSeries.forEach(it => it.unit = units.time.microsecond)
+          timeSeries.forEach(it => {
+            it.unit = units.time.microsecond;
+            // Os campos da query DQL se chamam "now"/"baseline" — renomeados aqui pros
+            // rótulos padrão do app (mesmos usados nos demais gráficos de workload).
+            const key = Array.isArray(it.name) ? it.name.join(' | ') : it.name;
+            if (key === 'now') it.name = CURRENT_LABEL;
+            else if (key === 'baseline') it.name = BASELINE_LABEL;
+          })
           setSeries(timeSeries)
         }
       } catch (err) {
@@ -54,7 +62,8 @@ function WorkloadResponseTime({ filters, title = "windson" }: ChartProps) {
       loading={loading}
       data={series}
       truncationMode={"start"}
-      curve="smooth" 
+      curve="smooth"
+      colorPalette={currentBaselinePalette(CURRENT_LABEL)}
     >
       <TimeseriesChart.Legend position="bottom" />
     </TimeseriesChart>

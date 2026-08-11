@@ -22,7 +22,7 @@ export const MAX_DATAPOINTS_PER_SERIES = 10_080;
 
 const UNIT_MS = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 } as const;
 
-function resolutionToMs(res: string): number {
+export function resolutionToMs(res: string): number {
   const match = res.match(/^(\d+)([smhd])$/);
   if (!match) return MIN_RESOLUTION_MS;
   return Number(match[1]) * UNIT_MS[match[2] as keyof typeof UNIT_MS];
@@ -120,27 +120,115 @@ export function resolutionForDays(days: number): string {
     return clampResolutionToApiLimits(auto, timeframe);
   }
 
-  /** Menor resolução aceita para séries de baseline (comparação com histórico). */
-  export const MIN_BASELINE_RESOLUTION_MS = 5 * UNIT_MS.m;
+  /**
+   * Resolução mínima (mais grossa) que garante dado disponível pra uma consulta que
+   * alcança até `maxShiftDays` dias atrás do INÍCIO do timeframe selecionado — o
+   * "piso de disponibilidade de dado" que uma baseline de 7/14/21 dias sempre tem
+   * que respeitar. A Metrics API só mantém granularidade fina (1 minuto) pros
+   * primeiros ~14 dias de histórico; além disso os dados já vêm pré-agregados mais
+   * grosso, e pedir uma resolução fina demais pra essa idade simplesmente não
+   * retorna nada (é por isso que a baseline "sumia" com um timeframe de 7 dias: 7
+   * dias de "now" + até 21 dias de shift = dado de até 28 dias atrás, fora da
+   * janela de granularidade fina).
+   *
+   * SEMPRE calculado em modo automático (ignora resolução manual) — é um limite
+   * técnico da API, não uma preferência do usuário. Reaproveita os mesmos degraus
+   * de {@link pickResolution} (14/28/400 dias), como se "now" tivesse os dias do
+   * timeframe selecionado MAIS os `maxShiftDays` que o shift mais distante alcança.
+   */
+  export function dataAvailabilityFloor(timeframe?: Timeframe, maxShiftDays = 21): string {
+    return pickResolution(maxShiftDays, timeframe, 'auto');
+  }
 
   /**
-   * Resolução para séries de baseline (média/mediana de N dias atrás, ex.: 7/14/21
-   * dias). Nunca mais fina que 5 minutos — baseline é uma referência suavizada de
-   * comparação, não a série principal que o usuário está inspecionando, e uma
-   * resolução muito fina nela é mais ruído estatístico do que sinal útil.
+   * Resolução para séries de baseline (média/mediana de N dias atrás — 7/14/21 por
+   * padrão, ver classicBaseLineBy/responseTime).
    *
-   * Isso vale mesmo com uma resolução manual escolhida pelo usuário no filtro
-   * "Resolution": esse piso é uma decisão de qualidade estatística da baseline,
-   * independente de qual resolução ele quer ver na série "now".
-   *
-   * Substitui o antigo padrão de somar "dias extras" fictícios em pickResolution
-   * (ex.: pickResolution(21, ...)) só para empurrar o resultado para 5m — esse
-   * truque é frágil (depende de acertar o número mágico certo) e já causou uma
-   * regressão real nesta base de código quando o padding foi ajustado por outro
-   * motivo. Este helper deixa a regra explícita.
+   * Diferente de {@link pickResolution}, uma resolução manual aqui NÃO tem
+   * prioridade absoluta: ela só é respeitada se ainda for igual ou mais grossa que
+   * {@link dataAvailabilityFloor}. Pedir uma resolução manual fina demais pra
+   * baseline nunca traz dado nenhum (não é uma questão de preferência, é um limite
+   * técnico), então preferimos subir pra uma resolução mais grossa a mostrar a
+   * baseline vazia.
    */
-  export function pickBaselineResolution(timeframe?: Timeframe, manualResolution?: string): string {
-    const computed = pickResolution(0, timeframe, manualResolution);
-    const ms = Math.max(resolutionToMs(computed), MIN_BASELINE_RESOLUTION_MS);
-    return msToResolution(ms);
+  export function pickBaselineResolution(
+    timeframe?: Timeframe,
+    manualResolution?: string,
+    maxShiftDays = 21,
+  ): string {
+    const floor = dataAvailabilityFloor(timeframe, maxShiftDays);
+
+    if (!manualResolution || manualResolution === 'auto') {
+      return floor;
+    }
+
+    const manualClamped = clampResolutionToApiLimits(manualResolution, timeframe);
+    return resolutionToMs(manualClamped) >= resolutionToMs(floor) ? manualClamped : floor;
+  }
+
+  /**
+   * Quantas vezes a resolução da baseline é mais grossa que a de "now" (>= 1).
+   * Necessário só pra métricas de SOMA (ex.: Throughput): como a baseline pode
+   * calcular numa resolução mais grossa que "now" (ver pickBaselineResolution), um
+   * bucket de Nx o tamanho de um bucket de "now" soma ~Nx o valor pela própria
+   * natureza da soma — então o valor de cada ponto da baseline precisa ser
+   * dividido por essa razão antes de comparar com "now", senão a baseline aparece
+   * artificialmente maior/menor mesmo com a taxa real idêntica. Métricas de média
+   * (CPU, memória, tempo de resposta) não precisam dessa renormalização — média já
+   * é praticamente invariante ao tamanho do bucket.
+   */
+  export function resolutionRatio(coarser: string, finer: string): number {
+    return resolutionToMs(coarser) / resolutionToMs(finer);
+  }
+
+  /** Degraus nomeados de resolução, do mais fino ao mais grosso — usado pra achar "um degrau mais fino que X". */
+  const RESOLUTION_LADDER = ['1m', '5m', '10m', '30m', '1h', '6h', '1d'] as const;
+
+  function oneStepFiner(res: string): string {
+    const ms = resolutionToMs(res);
+    const idx = RESOLUTION_LADDER.findIndex((r) => resolutionToMs(r) >= ms);
+    const finerIdx = idx === -1 ? RESOLUTION_LADDER.length - 1 : Math.max(0, idx - 1);
+    return RESOLUTION_LADDER[finerIdx];
+  }
+
+  /**
+   * Calcula as resoluções de "now" e baseline juntas, garantindo que não fiquem
+   * absurdamente distantes uma da outra em modo automático — ex.: se a baseline
+   * precisa subir pra 1h (dado de 28 dias, ver dataAvailabilityFloor), "now" não
+   * fica mais fina que 30 minutos (um degrau mais fino que a baseline), mesmo que
+   * o timeframe selecionado, isolado, permitisse 1 minuto. Sem isso, "now" fica
+   * espicada em 1min do lado de uma baseline lisa em 1h, o que é confuso de
+   * comparar visualmente mesmo depois de renormalizada (Throughput).
+   *
+   * Com resolução manual, o piso de "now" não se aplica — a escolha do usuário pra
+   * "now" é sempre atendível (ela não olha tão longe no passado quanto a
+   * baseline), então é respeitada como está.
+   */
+  export function pickPairedResolutions(
+    timeframe?: Timeframe,
+    manualResolution?: string,
+    maxShiftDays = 21,
+  ): { now: string; baseline: string } {
+    const baseline = pickBaselineResolution(timeframe, manualResolution, maxShiftDays);
+    let now = pickResolution(0, timeframe, manualResolution);
+
+    if (!manualResolution || manualResolution === 'auto') {
+      const floor = oneStepFiner(baseline);
+      if (resolutionToMs(now) < resolutionToMs(floor)) {
+        now = floor;
+      }
+    }
+
+    return { now, baseline };
+  }
+
+  /**
+   * Filtra RESOLUTION_OPTIONS pras opções que realmente retornam dado no timeframe
+   * selecionado — esconde qualquer resolução mais fina que
+   * {@link dataAvailabilityFloor}, que sempre estouraria vazia pelo menos na
+   * baseline. "Auto" nunca é escondida.
+   */
+  export function availableResolutionOptions(timeframe?: Timeframe, maxShiftDays = 21): Option[] {
+    const floorMs = resolutionToMs(dataAvailabilityFloor(timeframe, maxShiftDays));
+    return RESOLUTION_OPTIONS.filter((o) => o.value === 'auto' || resolutionToMs(o.value) >= floorMs);
   }

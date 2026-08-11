@@ -3,7 +3,7 @@ import { clientClassic, MetricResult } from "../core/MetricsClientClassic"
 import { classicBaseLine } from "../builtin/baseLineService";
 import { GrailDqlQuery } from "../core/GrailClient";
 import { QueryResult } from "@dynatrace-sdk/client-query";
-import { pickResolution, pickBaselineResolution } from "app/components/timeframe/resolution";
+import { pickPairedResolutions } from "app/components/timeframe/resolution";
 
 export async function getWorkloads(kubernetsCluster = 'all', Namespace = 'all',timeFrame? : Timeframe) {
 
@@ -26,8 +26,7 @@ export function  serviceMetricByApplicationName(applicationName : string,timeFra
   aggregation = "avg") : Promise<QueryResult | { error: string; }>{
   
   const filter = `, filter: in(dt.entity.service, classicEntitySelector("type(SERVICE),toRelationship.CALLS(type(APPLICATION),entityName.equals(${applicationName}))"))`
-  const intervalNow = pickResolution(0,timeFrame)
-  const intervalBase = pickBaselineResolution(timeFrame)
+  const { now: intervalNow, baseline: intervalBase } = pickPairedResolutions(timeFrame)
   const dql = `
     timeseries
       nowScalar = ${aggregation}(${metric}, scalar: true), interval:${intervalNow}
@@ -57,8 +56,7 @@ export function  responseTimePercentilByApplicationName(
   timeFrame? : Timeframe, p=90) : Promise<QueryResult | { error: string; }>{
   
   const filter = `, filter: in(dt.entity.service, classicEntitySelector("type(SERVICE),toRelationship.CALLS(type(APPLICATION),entityName.equals(${applicationName}))"))`
-  const intervalNow = pickResolution(0,timeFrame)
-  const intervalBase = pickBaselineResolution(timeFrame)
+  const { now: intervalNow, baseline: intervalBase } = pickPairedResolutions(timeFrame)
   const dql = `
     timeseries
       now=percentile(dt.service.request.response_time,${p}), nowScalar = percentile(dt.service.request.response_time, ${p}, scalar: true), interval:${intervalNow}

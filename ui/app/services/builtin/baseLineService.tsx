@@ -40,7 +40,9 @@ export function classicBaseLineBy(
     }
   });
   const query = `(${querys.join('+')})/ ${examples}`;
-  return clientClassic(query, timeframe,pickBaselineResolution(timeframe,resolution),metricResult.entitySelector)
+  // maxShiftDays = 7*examples: o shift mais distante é -7*examples dias, então é até lá
+  // que a resolução precisa ser válida (ver doc de pickBaselineResolution).
+  return clientClassic(query, timeframe,pickBaselineResolution(timeframe,resolution,7*examples),metricResult.entitySelector)
 }
 
 export function classicBaseLine(baseQuery : string, timeframe? : Timeframe, toUnit? : string, examples = 3, resolution? : string){
@@ -52,7 +54,7 @@ export function classicBaseLine(baseQuery : string, timeframe? : Timeframe, toUn
 
     const query = `${querys.join('+')}`;
 
-    return clientClassic(query, timeframe, pickBaselineResolution(timeframe,resolution)).then(res => {
+    return clientClassic(query, timeframe, pickBaselineResolution(timeframe,resolution,7*examples)).then(res => {
       res?.response?.result.forEach(col => {
         col.data.forEach(ms => {
           ms.values = ms.values.map(v => v / examples);

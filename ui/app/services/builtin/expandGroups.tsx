@@ -1,6 +1,21 @@
+// IMPORTANTE: `prevToken` (abaixo) sempre chega em minúsculas (.toLowerCase()) antes de
+// checar este Set — por isso todas as entradas aqui têm que estar em minúsculas, mesmo
+// quando o nome real da função no metric selector usa camelCase (ex.: "splitBy" vira
+// "splitby", "toUnit" vira "tounit"). "splitBy" já estava na lista com maiúscula desde
+// antes e nunca dava match por causa disso — só não quebrava nada porque splitBy() sem
+// argumentos cai no caso "sem vírgula" (preserva) de qualquer jeito.
 const IGNORE_GROUP_AFTER = new Set<string>([
-  'rollup', 'fold', 'splitBy', 'timeshift', 'default',
-  // adicione aqui se precisar: 'limit', 'sort', 'filter', ...
+  'rollup', 'fold', 'splitby', 'timeshift', 'default',
+  // tounit(from,to), eq(field,value) e and(cond,cond,...) são chamadas de função com
+  // argumentos separados por vírgula — não grupos "(a,b,c)" que devem virar N queries
+  // separadas. Sem essas entradas, expandGroups tratava a vírgula do meio de
+  // toUnit(MilliCores,Cores) (ou de um filter com 2+ condições, ex.: namespace e
+  // workload juntos) como um grupo expansível, corrompendo a query — via
+  // classicBaseLineBy isso só apareceu quando WorkloadCpuUsage/WorkloadMemoryUsage
+  // passaram a reusar essa função para a baseline de 21 dias (baseQuery com
+  // filter/toUnit embutidos, diferente do Throughput, que não tem nenhum dos dois).
+  'tounit', 'eq', 'and', 'or', 'filter',
+  // adicione aqui se precisar: 'limit', 'sort', ...
 ]);
 
 function hasTopLevelComma(s: string): boolean {

@@ -8,7 +8,7 @@ import { NameSpaceSelection } from './properties/NameSpacesSelect';
 import { WorkloadsSelection } from './properties/WorkloadsSelect';
 import { TimeFrame } from '../timeframe/Timeframe';
 import { getDefaultTimeframe } from '../timeframe/DefaultTimeframe';
-import { RESOLUTION_OPTIONS } from '../timeframe/resolution';
+import { availableResolutionOptions } from '../timeframe/resolution';
 import { FilterBarProps } from '../dashboard/DashBoard';
 import { SelectComponent } from '../form/Select';
 import { useSearchParams } from 'react-router-dom';
@@ -36,8 +36,16 @@ export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
   const autoRefresh = useAutoRefreshMs()
   const setResolutionSelecionado = useSetResolution()
   const resolution = useResolution()
+  const currentTimeframe = useTimeFrame()
 
-
+  // Esconde do seletor qualquer resolução mais fina do que a API realmente consegue
+  // atender pro timeframe selecionado (considerando que a baseline de 7/14/21 dias
+  // alcança até 21 dias além do início do timeframe) — evita escolher algo que
+  // sempre voltaria vazio pra baseline de CPU/Memória/Throughput/Response Time.
+  const resolutionOptions = useMemo(
+    () => availableResolutionOptions(currentTimeframe),
+    [currentTimeframe],
+  );
 
   const [allProps, setAllProps] = useState<FilterItemValues>({
     cluster:   { value: useClusterSelected() },
@@ -97,7 +105,7 @@ export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
       <FilterBar.Item name="resolution" label="Resolution">
         <SelectComponent
           defaultValue={resolution}
-          options={RESOLUTION_OPTIONS}
+          options={resolutionOptions}
           clearable={false}
         />
       </FilterBar.Item>

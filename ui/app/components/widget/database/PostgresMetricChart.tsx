@@ -6,6 +6,7 @@ import { useTimeFrame } from 'app/components/context/FilterK8sContext';
 import { timeseriesCommandResultToChartSeries } from 'app/services/core/GrailConverter';
 import { postgresMetricTimeseries } from 'app/services/postgres/postgresMetricTimeseries';
 import { TimeSeriesMinMax } from 'app/model/TimeSeriesMinMax';
+import { CHART_COLORS } from '../style/ChartColors';
 
 type PostgresMetricChartProps = {
   label: string;
@@ -58,7 +59,7 @@ export const PostgresMetricChart = ({
   return (
     <div style={{ minWidth: 260, flex: 1 }}>
       <Heading level={5} style={{ margin: '0 0 4px 0' }}>{label}</Heading>
-      <TimeseriesChart loading={loading} data={series} truncationMode="start" curve="smooth">
+      <TimeseriesChart loading={loading} data={series} truncationMode="start" curve="smooth" colorPalette={{ [label]: CHART_COLORS.current }}>
         <TimeseriesChart.Legend position="bottom" />
         <TimeseriesChart.YAxis min={yAxis.min} max={yAxis.max} />
       </TimeseriesChart>
