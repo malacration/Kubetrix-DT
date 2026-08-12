@@ -16,6 +16,28 @@ export const CHART_COLORS = {
   threshold: Colors.Charts.Threshold.Bad.Default,
 } as const;
 
+// A cor 05 fica reservada para baseline. Assim, mesmo com várias séries no modo
+// por pod, nenhuma delas se confunde visualmente com a referência histórica.
+const POD_COLORS = [
+  Colors.Charts.Categorical.Color01.Default,
+  Colors.Charts.Categorical.Color02.Default,
+  Colors.Charts.Categorical.Color03.Default,
+  Colors.Charts.Categorical.Color04.Default,
+  Colors.Charts.Categorical.Color06.Default,
+  Colors.Charts.Categorical.Color07.Default,
+  Colors.Charts.Categorical.Color09.Default,
+  Colors.Charts.Categorical.Color10.Default,
+  Colors.Charts.Categorical.Color11.Default,
+  Colors.Charts.Categorical.Color12.Default,
+  Colors.Charts.Categorical.Color13.Default,
+  Colors.Charts.Categorical.Color14.Default,
+  Colors.Charts.Categorical.Color15.Default,
+] as const;
+
+export function podSeriesColor(index: number): string {
+  return POD_COLORS[index % POD_COLORS.length];
+}
+
 /**
  * Rótulo padrão da série de comparação histórica — mesmo texto em todos os gráficos
  * (Throughput, CPU, Memória, Response Time). Reflete a janela real usada: média de

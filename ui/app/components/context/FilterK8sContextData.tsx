@@ -23,6 +23,14 @@ export interface FilterK8sContextData {
   setWorkloadSelected: Dispatch<SetStateAction<string>>;
   setWorkloadOptions?: Dispatch<SetStateAction<Array<Option>>>;
 
+  // node — recorte por clique na página de análise de workload ("all" = sem recorte)
+  nodeSelected: string;
+  setNodeSelected: Dispatch<SetStateAction<string>>;
+
+  // pod em evidência nos gráficos de recurso ("all" = todos os pods)
+  highlightedPod: string;
+  setHighlightedPod: Dispatch<SetStateAction<string>>;
+
   // frontends
   frontendsOptions: Array<Option>;
   setFrontendsOptions?: Dispatch<SetStateAction<Array<Option>>>;

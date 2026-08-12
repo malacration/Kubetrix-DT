@@ -12,6 +12,8 @@ import { Button } from '@dynatrace/strato-components/buttons';
 import { ViewIcon, ViewOffIcon } from '@dynatrace/strato-icons';
 import { FilterItemValues } from '@dynatrace/strato-components-preview/filters';
 import { useAutoRefreshMs, useLastRefreshedAt, useSetLastRefreshedAt, useSetSidebarDismissed } from '../context/FilterK8sContext';
+import type { ChartProps } from '../filters/BarChartProps';
+import { dashboardWidgetHeaderButtonStyle } from './DashboardWidgetHeaderActions';
 
 interface DashboardProps {
   children: React.ReactNode;
@@ -44,6 +46,11 @@ const DashboardWidgetWrapper: React.FC<DashboardWidgetWrapperProps> = ({
   onHide,
   children,
 }) => {
+  const [headerActions, setHeaderActions] = useState<React.ReactNode>(null);
+  const handleHeaderActionsChange = useCallback((actions: React.ReactNode) => {
+    setHeaderActions(actions);
+  }, []);
+
   const containerStyle: CSSProperties = {
     width: isMaximized ? '100%' : undefined,
     boxSizing: 'border-box',
@@ -55,16 +62,25 @@ const DashboardWidgetWrapper: React.FC<DashboardWidgetWrapperProps> = ({
     justifyContent: title ? 'space-between' : 'flex-end',
     marginBottom: title ? '8px' : 0,
     gap: '8px',
+    flexWrap: 'wrap',
   };
+
+  const widget = React.isValidElement(children)
+    ? cloneElement(children as ReactElement<ChartProps>, {
+        onHeaderActionsChange: handleHeaderActionsChange,
+      })
+    : children;
 
   return (
     <Container style={containerStyle}>
       <div style={headerStyle}>
         {title && <Heading level={4} style={{ margin: 0 }}>{title}</Heading>}
-        <Flex flexDirection="row" gap={8}>
+        <Flex flexDirection="row" flexWrap="wrap" gap={8} alignItems="center">
+          {headerActions}
           <Button
             size="condensed"
             color="primary"
+            style={dashboardWidgetHeaderButtonStyle(false)}
             onClick={onHide}
             aria-label="Ocultar widget"
           >
@@ -74,6 +90,8 @@ const DashboardWidgetWrapper: React.FC<DashboardWidgetWrapperProps> = ({
           <Button
             size="condensed"
             color="primary"
+            variant={isMaximized ? 'emphasized' : 'default'}
+            style={dashboardWidgetHeaderButtonStyle(isMaximized)}
             onClick={onToggleMaximize}
             aria-label={isMaximized ? 'Reduzir widget' : 'Maximizar widget'}
           >
@@ -84,7 +102,7 @@ const DashboardWidgetWrapper: React.FC<DashboardWidgetWrapperProps> = ({
       {title && (
         <Divider variant="accent" style={{ marginBottom: Spacings.Size16 }} />
       )}
-      {children}
+      {widget}
     </Container>
   );
 };
@@ -320,6 +338,7 @@ const Dashboard: React.FC<DashboardProps> & { Filter: typeof DashboardFilter } =
                 size="condensed"
                 variant="emphasized"
                 color="primary"
+                style={dashboardWidgetHeaderButtonStyle(true)}
                 onClick={() => handleRestoreWidget(w.id)}
                 aria-label={`Restaurar ${w.title ?? w.id}`}
               >

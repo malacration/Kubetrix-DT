@@ -15,6 +15,11 @@ import { openDashboardInNewTab } from 'app/services/core/appUrl';
 import { timeFormatter, countFormatter, microToMileSeconds, countAbreviation, shareFormatter, latencyImpactFormatter } from './formater';
 import { Trend } from './Trend';
 import { withServiceContributions } from 'app/model/ServiceContribution';
+import {
+  dashboardWidgetHeaderButtonStyle,
+  DashboardWidgetHeaderActionGroup,
+  DashboardWidgetHeaderActions,
+} from 'app/components/dashboard/DashboardWidgetHeaderActions';
 
 // Slug precisa bater com uma entrada de app/services/core/docsRegistry.tsx.
 const DOCS_PAGE_SLUG = 'service-contribution-docs';
@@ -24,7 +29,7 @@ const normalizeRecord = (r: any) => ({
   ...r,
 })
 
-function Services({ filters, lastRefreshedAt}: ChartProps) {
+function Services({ filters, lastRefreshedAt, onHeaderActionsChange }: ChartProps) {
   
   const url = getEnvironmentUrl();
 
@@ -150,16 +155,28 @@ function Services({ filters, lastRefreshedAt}: ChartProps) {
     }
   }, [filters,lastRefreshedAt]);
 
-  return (
-    <div>
-      <Flex justifyContent="flex-end" style={{ marginBottom: 8 }}>
-        <Button onClick={() => openDashboardInNewTab(DOCS_PAGE_SLUG)}>
-          <Button.Prefix>
-            <DocumentIcon />
-          </Button.Prefix>
+  const headerActions = useMemo(() => (
+    <DashboardWidgetHeaderActions>
+      <DashboardWidgetHeaderActionGroup>
+        <Button
+          size="condensed"
+          style={dashboardWidgetHeaderButtonStyle(false)}
+          onClick={() => openDashboardInNewTab(DOCS_PAGE_SLUG)}
+        >
+          <Button.Prefix><DocumentIcon /></Button.Prefix>
           Documentação
         </Button>
-      </Flex>
+      </DashboardWidgetHeaderActionGroup>
+    </DashboardWidgetHeaderActions>
+  ), []);
+
+  useEffect(() => {
+    onHeaderActionsChange?.(headerActions);
+  }, [headerActions, onHeaderActionsChange]);
+
+  return (
+    <div>
+      {!onHeaderActionsChange && headerActions}
       <Flex height={300}>
         <DataTableV2
           data={problems}

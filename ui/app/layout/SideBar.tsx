@@ -8,6 +8,7 @@ const exemplos = [
   { label: "Frontend's (KPI)", path: '/dashboards/Frontends' },
   { label: "Postgres DBs (KPI)", path: '/dashboards/Postgres' },
   { label: 'Capacity Optimization', path: '/dashboards/Optimization' },
+  { label: 'Análise de Workload', path: '/dashboards/WorkloadAnalysis' },
   { label: 'OneAgent Deployments', path: '/dashboards/OneAgent' },
   { label: 'Problemas (Davis)', path: '/dashboards/Problems' },
 ];

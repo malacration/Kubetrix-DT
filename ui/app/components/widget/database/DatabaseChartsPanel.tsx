@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Flex } from '@dynatrace/strato-components/layouts';
 import { Button } from '@dynatrace/strato-components/buttons';
 import { DocumentIcon } from '@dynatrace/strato-icons';
@@ -7,6 +7,11 @@ import { useDetectedDatabases } from 'app/services/database/useDetectedDatabases
 import { openDashboardInNewTab } from 'app/services/core/appUrl';
 import { OracleDatabaseMetricsCharts } from './OracleDatabaseMetricsCharts';
 import { PostgresDatabaseMetricsCharts } from './PostgresDatabaseMetricsCharts';
+import {
+  dashboardWidgetHeaderButtonStyle,
+  DashboardWidgetHeaderActionGroup,
+  DashboardWidgetHeaderActions,
+} from '../../dashboard/DashboardWidgetHeaderActions';
 
 // Slug precisa bater com uma entrada de app/services/core/docsRegistry.tsx (fonte da lista
 // exibida na página raiz de documentação, /dashboards/Docs).
@@ -19,7 +24,7 @@ const DOCS_PAGE_SLUG = 'database-metrics-docs';
 // É um widget dashboardWidget separado de propósito — para poder ocultar/maximizar cada um
 // independentemente. A ativação exige clique explícito pelo mesmo motivo do KPIs: cada instância
 // detectada dispara várias chamadas ao Dynatrace (uma por gráfico).
-function DatabaseChartsPanel({ filters }: ChartProps) {
+function DatabaseChartsPanel({ filters, onHeaderActionsChange }: ChartProps) {
   const { loadingList, dbCandidates, oracleCandidates, postgresCandidates } = useDetectedDatabases(filters);
   const [chartsActivated, setChartsActivated] = useState(false);
 
@@ -27,16 +32,28 @@ function DatabaseChartsPanel({ filters }: ChartProps) {
     setChartsActivated(false);
   }, [filters?.cluster?.value, filters?.namespace?.value, filters?.workload?.value, filters?.timeframe?.value]);
 
-  return (
-    <div>
-      <Flex justifyContent="flex-end" style={{ marginBottom: 8 }}>
-        <Button onClick={() => openDashboardInNewTab(DOCS_PAGE_SLUG)}>
-          <Button.Prefix>
-            <DocumentIcon />
-          </Button.Prefix>
+  const headerActions = useMemo(() => (
+    <DashboardWidgetHeaderActions>
+      <DashboardWidgetHeaderActionGroup>
+        <Button
+          size="condensed"
+          style={dashboardWidgetHeaderButtonStyle(false)}
+          onClick={() => openDashboardInNewTab(DOCS_PAGE_SLUG)}
+        >
+          <Button.Prefix><DocumentIcon /></Button.Prefix>
           Documentação
         </Button>
-      </Flex>
+      </DashboardWidgetHeaderActionGroup>
+    </DashboardWidgetHeaderActions>
+  ), []);
+
+  useEffect(() => {
+    onHeaderActionsChange?.(headerActions);
+  }, [headerActions, onHeaderActionsChange]);
+
+  return (
+    <div>
+      {!onHeaderActionsChange && headerActions}
 
       {dbCandidates.length === 0 && !loadingList && (
         <div style={{ opacity: 0.7 }}>
@@ -54,7 +71,12 @@ function DatabaseChartsPanel({ filters }: ChartProps) {
             {dbCandidates.map((c) => `${c.name} (${c.technology})`).join(', ')}
           </div>
           <Flex>
-            <Button color="primary" variant="accent" onClick={() => setChartsActivated(true)}>
+            <Button
+              color="primary"
+              variant="accent"
+              style={dashboardWidgetHeaderButtonStyle(true)}
+              onClick={() => setChartsActivated(true)}
+            >
               Carregar gráficos de métricas
             </Button>
           </Flex>

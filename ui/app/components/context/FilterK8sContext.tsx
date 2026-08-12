@@ -3,6 +3,7 @@ import {
   Dispatch,
   ReactElement,
   SetStateAction,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -57,6 +58,23 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
     "wl",
     parseAsString.withDefault("all")
   );
+
+  // Node selecionado por clique na página de análise de workload. Fica na URL como os
+  // demais filtros pra que o recorte sobreviva a reload e seja compartilhável. "all" =
+  // sem recorte (agregado de todos os nodes do workload).
+  const [nodeSelectedRaw, setNodeSelectedRaw] = useQueryState(
+    "node",
+    parseAsString.withDefault("all")
+  );
+
+  // Estado de interação efêmero e compartilhado entre os gráficos. Não vai para
+  // a URL: atualizar query params durante uma ação do gráfico interrompe tooltip,
+  // crosshair e outras interações do Strato.
+  const [highlightedPod, setHighlightedPod] = useState("all");
+
+  useEffect(() => {
+    setHighlightedPod("all");
+  }, [clusterSelectedRaw, namespaceSelectedRaw, workloadSelectedRaw]);
 
   const [autoRefreshMsRaw, setAutoRefreshMsRaw] = useQueryState<number>(
     "ar",
@@ -113,6 +131,14 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
     setWorkloadSelectedRaw(next ?? "all");
   };
 
+  const setNodeSelected: Dispatch<SetStateAction<string>> = (upd) => {
+    const next =
+      typeof upd === "function"
+        ? (upd as (prev: string) => string)(nodeSelectedRaw)
+        : upd;
+    setNodeSelectedRaw(next ?? "all");
+  };
+
   const setFrontendsSelected: Dispatch<SetStateAction<string[]>> = (upd) => {
     const next =
       typeof upd === 'function'
@@ -140,12 +166,14 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
       typeof upd === "function"
         ? (upd as (prev: number) => number)(autoRefreshMsRaw)
         : upd;
-        
-        setAutoRefreshMsRaw(next ?? 20000);
-        if(next != autoRefreshMsRaw){
-          setLastRefreshedAt(new Date())
-          console.log("parametro mudou")
-        }
+
+    const safeNext = next ?? 20000;
+    // Não reescreve o mesmo parâmetro na URL. Além do trabalho desnecessário,
+    // isso podia remontar widgets e encerrar hover/seleção em andamento.
+    if (safeNext === autoRefreshMsRaw) return;
+
+    setAutoRefreshMsRaw(safeNext);
+    setLastRefreshedAt(new Date());
   };
 
   // TIMEFRAME sincronizado na URL via nuqs (param: "tf")
@@ -188,6 +216,14 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
       setWorkloadSelected,
       setWorkloadOptions, // << NEW
 
+      // node (recorte por clique na análise de workload)
+      nodeSelected: nodeSelectedRaw,
+      setNodeSelected,
+
+      // pod em evidência (compartilhado pelos gráficos de recurso)
+      highlightedPod,
+      setHighlightedPod,
+
       //frontend
       frontendsOptions,
       setFrontendsOptions,
@@ -225,6 +261,8 @@ export function FilterK8sContextProvider({ children }: FilterK8sContextProps) {
       namespaceSelectedRaw,
       workloadOptions,
       workloadSelectedRaw,
+      nodeSelectedRaw,
+      highlightedPod,
       frontendsOptions,
       frontendsSelectedRaw,
       frontKpisSelectedRaw,
@@ -258,6 +296,16 @@ export const useWorkloadSelected = () =>
   useContextSelector(FilterK8sContext, (v) => v.workloadSelected);
 export const useSetWorkloadSelected = () =>
   useContextSelector(FilterK8sContext, (v) => v.setWorkloadSelected);
+
+export const useNodeSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.nodeSelected);
+export const useSetNodeSelected = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setNodeSelected);
+
+export const useHighlightedPod = () =>
+  useContextSelector(FilterK8sContext, (v) => v.highlightedPod);
+export const useSetHighlightedPod = () =>
+  useContextSelector(FilterK8sContext, (v) => v.setHighlightedPod);
 
 export const useTimeFrame = () =>
   useContextSelector(FilterK8sContext, (v) => v.timeFrame);

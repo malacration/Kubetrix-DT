@@ -14,6 +14,11 @@ import { SelectComponent } from '../form/Select';
 import { useSearchParams } from 'react-router-dom';
 import { useAutoRefreshMs, useClusterSelected, useNamespaceSelected, useResolution, useSetAutoRefreshMs, useSetClusterSelected, useSetNamespaceSelected, useSetResolution, useSetTimeFrame, useSetWorkloadSelected, useTimeFrame, useWorkloadSelected } from '../context/FilterK8sContext';
 
+interface FiltersK8sProps extends FilterBarProps {
+  /** Algumas análises são deliberadamente estáticas e não oferecem atualização automática. */
+  showAutoRefresh?: boolean;
+}
+
 function mergeFilterValues(prev: FilterItemValues, next: FilterItemValues): FilterItemValues {
   const merged = { ...prev };
   for (const [key, val] of Object.entries(next)) {
@@ -24,7 +29,7 @@ function mergeFilterValues(prev: FilterItemValues, next: FilterItemValues): Filt
   return merged;
 }
 
-export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
+export const FiltersK8s = ({ onFiltersChange, showAutoRefresh = true }: FiltersK8sProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   
@@ -110,17 +115,21 @@ export const FiltersK8s = ({ onFiltersChange }: FilterBarProps) => {
         />
       </FilterBar.Item>
 
-      <FilterBar.Item name="time" label="Auto Refresh">
-        <SelectComponent
-          defaultValue={autoRefresh.toString()}
-          options={[
-            new Option("10m", "600000"),
-            new Option("5m", "300000"),
-            new Option("1m", "60000"),
-          ]}
-          clearable={false}
-        />
-      </FilterBar.Item>
+      {showAutoRefresh && (
+        <FilterBar.Item name="time" label="Auto Refresh">
+          <SelectComponent
+            defaultValue={autoRefresh.toString()}
+            options={[
+              // 0 desliga: o Dashboard não agenda o setInterval quando autoRefresh <= 0.
+              new Option("Off", "0"),
+              new Option("10m", "600000"),
+              new Option("5m", "300000"),
+              new Option("1m", "60000"),
+            ]}
+            clearable={false}
+          />
+        </FilterBar.Item>
+      )}
     </FilterBar>
   );
 };

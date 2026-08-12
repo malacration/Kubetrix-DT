@@ -30,6 +30,10 @@
         "comment": "Allows to read metrics"
       },
       {
+        "name": "storage:smartscape:read",
+        "comment": "Allows to resolve Kubernetes nodes, hosts and processes in Smartscape"
+      },
+      {
         "name": "storage:entities:read",
         "comment": "Allows to read entities"
       },

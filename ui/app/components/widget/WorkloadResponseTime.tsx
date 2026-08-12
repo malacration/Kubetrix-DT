@@ -1,16 +1,17 @@
-import { Timeseries, TimeseriesAnnotations, type TimeseriesAnnotationsMarkerProps, TimeseriesChart } from '@dynatrace/strato-components-preview/charts';
-import React, { useEffect, useState } from 'react';
-import { MetricResult } from 'app/services/core/MetricsClientClassic';
+import { Timeseries, TimeseriesChart } from '@dynatrace/strato-components-preview/charts';
+import React, { useEffect, useMemo, useState } from 'react';
 import { responseTime } from 'app/services/k8s/WorkloadService';
 import { ChartProps } from '../filters/BarChartProps';
-import { shiftTimeframeBack } from 'app/model/ShiftTimeframeBack';
-import { QueryResult } from '@dynatrace-sdk/client-query';
-import { DQLResultConverter, convertQueryResultToTimeseries, convertToTimeseries } from '@dynatrace/strato-components-preview/conversion-utilities';
-import { convert, units } from "@dynatrace-sdk/units";
-import { ThumbsDownIcon, ViewIcon } from '@dynatrace/strato-icons';
-import { isQueryResult, queryResultToTimeseries } from 'app/services/core/GrailConverter';
+import { convertQueryResultToTimeseries } from '@dynatrace/strato-components-preview/conversion-utilities';
+import { units } from "@dynatrace-sdk/units";
+import { isQueryResult } from 'app/services/core/GrailConverter';
 import { BASELINE_LABEL, CHART_COLORS } from './style/ChartColors';
 import { Button } from '@dynatrace/strato-components/buttons';
+import {
+  dashboardWidgetHeaderButtonStyle,
+  DashboardWidgetHeaderActionGroup,
+  DashboardWidgetHeaderActions,
+} from '../dashboard/DashboardWidgetHeaderActions';
 
 // "now" e baseline sempre usam a mesma agregação (avg ou median), escolhida pelo
 // toggle abaixo — ver k8s/WorkloadService.tsx#responseTime(). Rótulo muda junto pra
@@ -31,7 +32,7 @@ function loadStoredAggregation(): 'avg' | 'median' {
 }
 
 
-function WorkloadResponseTime({ filters, title = "windson" }: ChartProps) {
+function WorkloadResponseTime({ filters, onHeaderActionsChange }: ChartProps) {
   const [series, setSeries] = useState<Timeseries[]>([]);
   const [loading, setLoading] = useState(false);
   const [aggregation, setAggregation] = useState<'avg' | 'median'>(loadStoredAggregation);
@@ -85,14 +86,40 @@ function WorkloadResponseTime({ filters, title = "windson" }: ChartProps) {
     return () => { cancelled = true; };
   }, [filters, aggregation]);
 
+  const headerActions = useMemo(() => (
+    <DashboardWidgetHeaderActions>
+      <DashboardWidgetHeaderActionGroup label="Cálculo">
+        <Button
+          size="condensed"
+          color="primary"
+          variant={aggregation === 'avg' ? 'emphasized' : 'default'}
+          style={dashboardWidgetHeaderButtonStyle(aggregation === 'avg')}
+          aria-pressed={aggregation === 'avg'}
+          onClick={() => setAggregation('avg')}
+        >
+          Média
+        </Button>
+        <Button
+          size="condensed"
+          color="primary"
+          variant={aggregation === 'median' ? 'emphasized' : 'default'}
+          style={dashboardWidgetHeaderButtonStyle(aggregation === 'median')}
+          aria-pressed={aggregation === 'median'}
+          onClick={() => setAggregation('median')}
+        >
+          Mediana p50
+        </Button>
+      </DashboardWidgetHeaderActionGroup>
+    </DashboardWidgetHeaderActions>
+  ), [aggregation]);
+
+  useEffect(() => {
+    onHeaderActionsChange?.(headerActions);
+  }, [headerActions, onHeaderActionsChange]);
+
   return (
     <div>
-      <Button
-        color="primary" variant="accent"
-        onClick={() => setAggregation(a => (a === 'median' ? 'avg' : 'median'))}
-      >
-        {aggregation === 'median' ? 'Usar média' : 'Usar mediana (p50)'}
-      </Button>
+      {!onHeaderActionsChange && headerActions}
       <TimeseriesChart
         loading={loading}
         data={series}
@@ -112,4 +139,3 @@ function WorkloadResponseTime({ filters, title = "windson" }: ChartProps) {
 (WorkloadResponseTime as any).dashboardWidget = true;
 
 export { WorkloadResponseTime };
-

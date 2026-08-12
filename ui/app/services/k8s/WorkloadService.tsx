@@ -136,6 +136,192 @@ export function  kubernetesWorkload(metricName : string,
   return clientClassic(metricSelector,timeFrame,pickResolution(0,timeFrame,resolution))
 }
 
+/**
+ * Uso de recursos no nível de pod.
+ *
+ * Neste tenant, o pod é representado por `dt.entity.cloud_application_instance`.
+ * O nome dessa entidade começa com o nome do workload, então ele também é usado
+ * para restringir as séries ao workload selecionado.
+ */
+export function kubernetesPodResourceUsage(
+  resource: 'cpu' | 'memory',
+  cluster?: string,
+  namespace?: string,
+  workload?: string,
+  timeFrame?: Timeframe,
+  resolution?: string,
+  node?: string,
+): Promise<QueryResult | { error: string }> {
+  const quote = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+  if (
+    !cluster || cluster === 'all' ||
+    !namespace || namespace === 'all' ||
+    !workload || workload === 'all'
+  ) {
+    return Promise.resolve({
+      error: 'Selecione cluster, namespace e workload para consultar recursos por pod.',
+    });
+  }
+
+  const podEntity = 'dt.entity.cloud_application_instance';
+  const nodeFilter = node && node !== 'all'
+    ? ` and k8s.node.name == "${quote(node)}"`
+    : '';
+  const filter = `
+    filter: {
+      matchesValue(k8s.namespace.name, "${quote(namespace)}") and
+      matchesValue(entityName(${podEntity}), "${quote(workload)}*") and
+      matchesValue(entityName(dt.entity.kubernetes_cluster), "${quote(cluster)}")${nodeFilter}
+    }`;
+  const interval = pickResolution(0, timeFrame, resolution);
+  const dql = resource === 'memory'
+    ? `
+      timeseries value = avg(dt.containers.memory.resident_set_bytes),
+        by: { ${podEntity}, k8s.node.name },
+        ${filter},
+        interval: ${interval}
+      | fieldsAdd pod = entityName(${podEntity})
+      | fieldsAdd node = k8s.node.name
+      | filter isNotNull(pod)
+      | fieldsKeep timeframe, interval, pod, node, value
+    `
+    : `
+      timeseries {
+          usage_user_time = avg(dt.containers.cpu.usage_user_time),
+          usage_system_time = avg(dt.containers.cpu.usage_system_time)
+        },
+        by: { ${podEntity}, k8s.node.name },
+        ${filter},
+        interval: ${interval}
+      | fieldsAdd value = (usage_user_time[] + usage_system_time[])
+          * 1000 / (60 * 1000 * 1000 * 1000)
+      | fieldsAdd pod = entityName(${podEntity})
+      | fieldsAdd node = k8s.node.name
+      | filter isNotNull(pod)
+      | fieldsKeep timeframe, interval, pod, node, value
+    `;
+
+  return GrailDqlQuery(dql, timeFrame);
+}
+
+/**
+ * CPU throttled por pod, convertido de nanossegundos/minuto para millicores.
+ *
+ * A consulta permanece dividida por pod. O widget pode somar essas séries localmente
+ * para exibir o throttling geral sem repetir a consulta ao alternar o agrupamento.
+ */
+export function kubernetesPodCpuThrottling(
+  cluster?: string,
+  namespace?: string,
+  workload?: string,
+  timeFrame?: Timeframe,
+  resolution?: string,
+  node?: string,
+): Promise<QueryResult | { error: string }> {
+  const quote = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+  if (
+    !cluster || cluster === 'all' ||
+    !namespace || namespace === 'all' ||
+    !workload || workload === 'all'
+  ) {
+    return Promise.resolve({
+      error: 'Selecione cluster, namespace e workload para consultar throttling por pod.',
+    });
+  }
+
+  const podEntity = 'dt.entity.cloud_application_instance';
+  const nodeFilter = node && node !== 'all'
+    ? ` and k8s.node.name == "${quote(node)}"`
+    : '';
+  const interval = pickResolution(0, timeFrame, resolution);
+  const dql = `
+    timeseries throttled_time = avg(
+        dt.containers.cpu.throttled_time,
+        rollup: sum,
+        rate: 1m
+      ),
+      by: { ${podEntity}, k8s.node.name },
+      filter: {
+        matchesValue(k8s.namespace.name, "${quote(namespace)}") and
+        matchesValue(entityName(${podEntity}), "${quote(workload)}*") and
+        matchesValue(entityName(dt.entity.kubernetes_cluster), "${quote(cluster)}")${nodeFilter}
+      },
+      interval: ${interval}
+    | fieldsAdd value = throttled_time[] * 1000 / (60 * 1000 * 1000 * 1000)
+    | fieldsAdd pod = entityName(${podEntity})
+    | fieldsAdd node = k8s.node.name
+    | filter isNotNull(pod)
+    | fieldsKeep timeframe, interval, pod, node, value
+  `;
+
+  return GrailDqlQuery(dql, timeFrame);
+}
+
+export interface KubernetesPodResourceLimit {
+  pod: string;
+  node?: string;
+  value: number;
+}
+
+/** Limite configurado nos containers, agregado no nível do pod. */
+export async function kubernetesPodResourceLimits(
+  resource: 'cpu' | 'memory',
+  cluster?: string,
+  namespace?: string,
+  workload?: string,
+  timeFrame?: Timeframe,
+  resolution?: string,
+  node?: string,
+): Promise<KubernetesPodResourceLimit[] | { error: string }> {
+  const quote = (value: string) => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+  if (
+    !cluster || cluster === 'all' ||
+    !namespace || namespace === 'all' ||
+    !workload || workload === 'all'
+  ) {
+    return { error: 'Selecione cluster, namespace e workload para consultar limites por pod.' };
+  }
+
+  const metric = resource === 'cpu'
+    ? 'dt.kubernetes.container.limits_cpu'
+    : 'dt.kubernetes.container.limits_memory';
+  const nodeFilter = node && node !== 'all'
+    ? ` and k8s.node.name == "${quote(node)}"`
+    : '';
+  const interval = pickResolution(0, timeFrame, resolution);
+  const dql = `
+    timeseries limit_values = sum(${metric}),
+      by: { k8s.pod.name, k8s.node.name },
+      filter: {
+        k8s.cluster.name == "${quote(cluster)}" and
+        k8s.namespace.name == "${quote(namespace)}" and
+        k8s.workload.name == "${quote(workload)}"${nodeFilter}
+      },
+      interval: ${interval}
+    | fieldsAdd value = arrayLast(limit_values)
+    | fieldsAdd pod = k8s.pod.name, node = k8s.node.name
+    | filter isNotNull(pod) and isNotNull(value) and value > 0
+    | fieldsKeep pod, node, value
+  `;
+  const result = await GrailDqlQuery(dql, timeFrame);
+  if ('error' in result) return result;
+
+  return (result.records ?? []).flatMap(record => {
+    if (!record) return [];
+    const pod = record.pod;
+    const value = Number(record.value);
+    if (typeof pod !== 'string' || !Number.isFinite(value) || value <= 0) return [];
+    return [{
+      pod,
+      node: typeof record.node === 'string' ? record.node : undefined,
+      value,
+    }];
+  });
+}
+
 export function serviceWorkload(metricName : string,
   $kubernetsCluster?,
   $Namespace?,
