@@ -118,6 +118,7 @@ export function CapacityBalance({
           height={130}
           width={260}
           loading={loading}
+          formatter={formatter}
         >
           <DonutChart.Legend position="right" ratio={0.45} />
         </DonutChart>

@@ -89,21 +89,38 @@ export function nodesResourceUsageOverTime(
   $kubernetsCluster?: string,
   timeFrame?: Timeframe,
   resolution?: string,
-  $node?: string,
+  $nodes?: string | string[],
 ): Promise<QueryResult | { error: string }> {
 
   if (!timeFrame) {
     return Promise.resolve({ error: 'Selecione um período para consultar o uso dos nodes.' });
   }
 
+  // Esta métrica representa o consumo TOTAL do node, não apenas o workload. Exigir
+  // explicitamente os nodes evita que a ausência de recorte transforme a consulta
+  // em "todos os nodes do cluster". Quem chama deve primeiro correlacionar o
+  // workload com seus pods (workloadPodsByNode).
+  const selectedNodes = (Array.isArray($nodes) ? $nodes : [$nodes])
+    .filter((node): node is string => Boolean(node && node !== 'all'));
+  if (selectedNodes.length === 0) {
+    return Promise.resolve({
+      error: 'Nenhum node correlacionado ao workload foi informado para a consulta.',
+    });
+  }
+
+  const nodeFilter = selectedNodes.length === 1
+    ? `k8s.node.name == "${quoteDql(selectedNodes[0])}"`
+    : `in(k8s.node.name, array(${selectedNodes
+        .map(node => `"${quoteDql(node)}"`)
+        .join(', ')}))`;
+
   const selectedFilters = [
     $kubernetsCluster && $kubernetsCluster !== 'all'
       ? `matchesValue(entityName(dt.entity.kubernetes_cluster), "${quoteDql($kubernetsCluster)}")` : '',
-    $node && $node !== 'all'
-      ? `k8s.node.name == "${quoteDql($node)}"` : '',
+    nodeFilter,
   ].filter(Boolean);
 
-  const filter = selectedFilters.length > 0 ? selectedFilters.join(' and ') : 'true';
+  const filter = selectedFilters.join(' and ');
   const interval = pickResolution(0, timeFrame, resolution);
   const containerEntity = 'dt.entity.container_group_instance';
   const dql = resource === 'memory'

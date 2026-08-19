@@ -1,11 +1,13 @@
 import { format as uformat, units } from '@dynatrace-sdk/units';
 
+// Sem "output" fixo: com "cascade: 1" a lib escolhe a melhor unidade (µs/ms/s/min/h)
+// pra cada valor, em vez de forçar tudo em ms — que deixava respostas de poucos
+// segundos aparecendo como "7.164,17 ms" em vez de "7,16 s".
 export const timeFormatter = {
     input: units.time.microsecond,
-    output: units.time.millisecond,
-    abbreviate: true,
+    cascade: 1,
     minimumFractionDigits: 1,
-    maximumFractionDigits: 3,
+    maximumFractionDigits: 2,
 }
 
 export const countFormatter = {
@@ -18,8 +20,8 @@ export const countFormatter = {
 export function microToMileSeconds(valueInMicros){
     return uformat(valueInMicros, {
         input: units.time.microsecond,
-        output: units.time.millisecond,
-        minimumFractionDigits: 2,
+        cascade: 1,
+        minimumFractionDigits: 1,
         maximumFractionDigits: 2,
         abbreviate: false,
     })

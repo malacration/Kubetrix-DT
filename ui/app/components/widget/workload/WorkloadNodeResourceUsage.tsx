@@ -24,6 +24,7 @@ import {
   NodeAllocatable,
   nodesAllocatableCapacity,
   nodesResourceUsageOverTime,
+  workloadPodsByNode,
 } from 'app/services/k8s/NodeServices';
 import {
   dashboardWidgetHeaderButtonStyle,
@@ -137,10 +138,12 @@ function WorkloadNodeResourceUsage({
 
     let cancelled = false;
     const cluster = filters.cluster?.value as string | undefined;
+    const namespace = filters.namespace?.value as string | undefined;
+    const workload = filters.workload?.value as string | undefined;
     const timeframe = filters.timeframe?.value;
     const resolution = filters.resolution?.value as string | undefined;
 
-    if (!timeframe) {
+    if (!timeframe || !workload || workload === 'all') {
       setCpuSeries([]);
       setMemorySeries([]);
       setAllocatable([]);
@@ -156,12 +159,45 @@ function WorkloadNodeResourceUsage({
       setAllocatable([]);
 
       try {
+        const selectedNode = nodeSelected && nodeSelected !== 'all'
+          ? String(nodeSelected)
+          : undefined;
+
+        // Sem recorte manual, primeiro descobre onde os pods deste workload foram
+        // observados. As métricas abaixo medem o consumo total do node; consultar só
+        // por cluster exibiria todos os workers, inclusive os não relacionados.
+        let correlatedNodes: string[];
+        if (selectedNode) {
+          correlatedNodes = [selectedNode];
+        } else {
+          const podsResult = await workloadPodsByNode(
+            cluster,
+            namespace,
+            workload,
+            timeframe as never,
+            resolution,
+          );
+          if (!isQueryResult(podsResult)) throw new Error(podsResult.error);
+
+          correlatedNodes = Array.from(new Set(
+            (podsResult.records ?? [])
+              .map(record => record?.node)
+              .filter((node): node is string => typeof node === 'string' && node !== ''),
+          )).sort((left, right) => left.localeCompare(right));
+        }
+
+        if (cancelled) return;
+        if (correlatedNodes.length === 0) {
+          setError('Nenhum node com pods deste workload foi encontrado no período selecionado.');
+          return;
+        }
+
         const [cpuResult, memoryResult, capacityResult] = await Promise.all([
           nodesResourceUsageOverTime(
-            'cpu', cluster, timeframe as never, resolution, nodeSelected,
+            'cpu', cluster, timeframe as never, resolution, correlatedNodes,
           ),
           nodesResourceUsageOverTime(
-            'memory', cluster, timeframe as never, resolution, nodeSelected,
+            'memory', cluster, timeframe as never, resolution, correlatedNodes,
           ),
           nodesAllocatableCapacity(cluster, timeframe as never),
         ]);
@@ -200,7 +236,8 @@ function WorkloadNodeResourceUsage({
         if (!cancelled) {
           setCpuSeries(cpu);
           setMemorySeries(memory);
-          setAllocatable(capacityResult);
+          const correlatedNodeSet = new Set(correlatedNodes);
+          setAllocatable(capacityResult.filter(item => correlatedNodeSet.has(item.node)));
           const failures = [
             !isQueryResult(cpuResult) ? `CPU: ${cpuResult.error}` : '',
             !isQueryResult(memoryResult) ? `Memória: ${memoryResult.error}` : '',
