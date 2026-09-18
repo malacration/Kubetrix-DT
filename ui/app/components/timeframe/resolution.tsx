@@ -12,6 +12,9 @@ export const RESOLUTION_OPTIONS: Option[] = [
   new Option('1 hour', '1h'),
   new Option('6 hours', '6h'),
   new Option('1 day', '1d'),
+  new Option('5 days', '5d'),
+  new Option('7 days', '7d'),
+  new Option('14 days', '14d'),
 ];
 
 /** Menor resolução aceita pela Metrics API v2 (Classic e Grail): 1 minuto. */

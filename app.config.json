@@ -10,6 +10,10 @@
     "id": "my.kubetrix.dt",
     "scopes": [
       {
+        "name": "davis:analyzers:execute",
+        "comment": "Previsão automática de CPU, memória e tráfego dos clusters Kubernetes"
+      },
+      {
         "name": "environment-api:metrics:read",
         "comment": "leitura de metricas"
       },
@@ -60,6 +64,14 @@
       {
         "name": "environment-api:problems:write",
         "comment": "Encerrar problemas e adicionar comentarios"
+      },
+      {
+        "name": "document:documents:read",
+        "comment": "Ler o documento compartilhado do mapa de chamadas (cache entre usuários)"
+      },
+      {
+        "name": "document:documents:write",
+        "comment": "Gerar/atualizar o documento compartilhado do mapa de chamadas"
       }
     ]
   },

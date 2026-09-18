@@ -1,3 +1,4 @@
+import { FrontendSessions } from 'app/components/widget/FrontendSessions';
 import React, { useEffect, useState } from 'react';
 import { FiltersK8s } from  '../../components/filters/FilterK8s'
 import { WorkloadResponseTime } from 'app/components/widget/WorkloadResponseTime';
@@ -34,6 +35,7 @@ const Dashboards = () => {
                         <WorkloadThroughput title='Throughput' />
                     </Flex>
                 </Flex>
+                <FrontendSessions title="Sessões ativas estimadas — frontends" />
                 <Flex flexDirection="row" width="100%">
                     <Flex flexItem width="60%">
                         <WorkloadCpuUsage title='CPU Usage'  />

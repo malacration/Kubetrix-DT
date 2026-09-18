@@ -3,7 +3,7 @@ import { ChartProps } from '../../filters/BarChartProps';
 import { useMemo } from 'react';
 import { Flex } from '@dynatrace/strato-components/layouts';
 import { Button } from '@dynatrace/strato-components/buttons';
-import { DocumentIcon } from '@dynatrace/strato-icons';
+import { DocumentIcon, WorkflowIcon } from '@dynatrace/strato-icons';
 import {
   DataTableV2,
   type DataTableV2ColumnDef,
@@ -11,7 +11,7 @@ import {
 import { Link } from '@dynatrace/strato-components/typography';
 import { getCallServices } from 'app/services/services';
 import { getEnvironmentUrl } from '@dynatrace-sdk/app-environment';
-import { openDashboardInNewTab } from 'app/services/core/appUrl';
+import { openDashboardInNewTab, openMapaChamadasForService, openMapaChamadasWithCurrentFilters } from 'app/services/core/appUrl';
 import { timeFormatter, countFormatter, microToMileSeconds, countAbreviation, shareFormatter, latencyImpactFormatter } from './formater';
 import { Trend } from './Trend';
 import { withServiceContributions } from 'app/model/ServiceContribution';
@@ -51,14 +51,29 @@ function CallServices({ filters, allowAll = false, onHeaderActionsChange }: Call
         id: 'name',
         width: { type: 'auto', maxWidth: 350 },
         cell: ({ value, rowData }) => {
+          const svcId = rowData?.id ?? rowData?.lookupId;
           return (
             <DataTableV2.DefaultCell >
-              <Link
-                href={`${getEnvironmentUrl()}/ui/apps/dynatrace.classic.services/ui/entity/${rowData?.id ?? rowData?.lookupId}`}
-                target="_blank"
-              >
-                {value}
-              </Link>
+              <Flex alignItems="center" gap={6}>
+                <Link
+                  href={`${getEnvironmentUrl()}/ui/apps/dynatrace.classic.services/ui/entity/${svcId}`}
+                  target="_blank"
+                >
+                  {value}
+                </Link>
+                {svcId && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    title="Ver no Mapa de Chamadas"
+                    style={{ cursor: 'pointer', display: 'inline-flex', opacity: 0.6 }}
+                    onClick={() => openMapaChamadasForService(svcId)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') openMapaChamadasForService(svcId); }}
+                  >
+                    <WorkflowIcon size={14} />
+                  </span>
+                )}
+              </Flex>
             </DataTableV2.DefaultCell>
           );
         },
@@ -161,6 +176,14 @@ function CallServices({ filters, allowAll = false, onHeaderActionsChange }: Call
         >
           <Button.Prefix><DocumentIcon /></Button.Prefix>
           Documentação
+        </Button>
+        <Button
+          size="condensed"
+          style={dashboardWidgetHeaderButtonStyle(false)}
+          onClick={openMapaChamadasWithCurrentFilters}
+        >
+          <Button.Prefix><WorkflowIcon /></Button.Prefix>
+          Mapa de Chamadas
         </Button>
       </DashboardWidgetHeaderActionGroup>
     </DashboardWidgetHeaderActions>

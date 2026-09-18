@@ -23,3 +23,25 @@ export function openDashboardInNewTab(pageSlug: string): void {
   if (typeof window === 'undefined') return;
   window.open(getDashboardUrl(pageSlug), '_blank', 'noopener,noreferrer');
 }
+
+/**
+ * Abre o Mapa de Chamadas já centralizado num serviço específico, numa aba nova —
+ * usado por qualquer tabela/widget que liste serviços (ver Services.tsx/CallsServices.tsx)
+ * pra ir direto do serviço listado pro grafo de dependências dele.
+ */
+export function openMapaChamadasForService(serviceId: string): void {
+  if (typeof window === 'undefined' || !serviceId) return;
+  const sp = new URLSearchParams();
+  sp.set('svc', serviceId);
+  window.open(`${getDashboardUrl('MapaChamadas')}?${sp.toString()}`, '_blank', 'noopener,noreferrer');
+}
+
+/**
+ * Abre o Mapa de Chamadas preservando os filtros de kubernetes ATUAIS da URL
+ * (cluster/ns/wl) — mesma convenção de navegação já usada pela sidebar (ver
+ * SideBar.tsx, que propaga `location.search` entre páginas).
+ */
+export function openMapaChamadasWithCurrentFilters(): void {
+  if (typeof window === 'undefined') return;
+  window.open(`${getDashboardUrl('MapaChamadas')}${window.location.search}`, '_blank', 'noopener,noreferrer');
+}

@@ -1,0 +1,773 @@
+<#
+.SYNOPSIS
+  Gera data.js para o mapa-aplicacao.html com dados reais do Dynatrace.
+
+.DESCRIPTION
+  Para cada namespace configurado:
+    1. Busca as arestas de chamada (calls / called_by) do modelo de entidades.
+    2. Busca o throughput (req/min, últimas 2h) de cada serviço envolvido.
+    3. Agrega serviços em workloads (dentro do namespace) e namespaces (fora).
+    4. Escreve data.js consumido pela página.
+
+  Peso das arestas: sem entitlement de spans não há métrica por par
+  chamador→destino; usamos o throughput do serviço DESTINO rateado
+  igualmente entre seus chamadores (aproximação documentada na página).
+
+.NOTES
+  Requer a variável de ambiente DT_PLATFORM_TOKEN (Platform Token read-only).
+  Uso:  pwsh -File .\gerar-dados.ps1
+#>
+
+param(
+    [string]$From,    # janela absoluta p/ snapshot histórico, ex.: 2026-07-08T08:00:00Z
+    [string]$To,      # obrigatório junto com -From
+    [string]$Label,   # rótulo do snapshot (vira opção no seletor "Momento" da página)
+    [string]$OutPath  # arquivo de saída (padrão: data.js, ou data-<label>.js com -Label)
+)
+
+$ErrorActionPreference = "Stop"
+
+# ----------------------------- configuração --------------------------------
+$EnvUrl      = "https://zey48022.apps.dynatrace.com"
+$Namespaces  = @("gabinete", "processo-viewer", "pje", "juds-middleware")
+$JanelaHoras = 2
+
+$Historico = [bool]$From
+if ($Historico -and -not $To) { throw "-From exige -To." }
+if ($Label -and -not $Historico) { throw "-Label é só para snapshots históricos (use com -From/-To)." }
+
+if ($OutPath) { $OutFile = $OutPath }
+elseif ($Label) {
+    $slug = ($Label.ToLower() -replace "[^a-z0-9]+", "-").Trim("-")
+    $OutFile = Join-Path $PSScriptRoot "data-$slug.js"
+}
+else { $OutFile = Join-Path $PSScriptRoot "data.js" }
+
+# timeframe: "__TF__" é injetado nas queries de entidades; $TsRange nas de métricas
+if ($Historico) {
+    $TfEnt     = ", from: `"$From`", to: `"$To`""
+    $JanelaMin = [int][Math]::Round(([datetime]$To - [datetime]$From).TotalMinutes)
+    $TsRange   = "from: `"$From`", to: `"$To`""
+}
+else {
+    $TfEnt     = ""
+    $JanelaMin = $JanelaHoras * 60
+    $TsRange   = "from: now()-${JanelaHoras}h"
+}
+# interval FINO (1 min) de propósito: um interval grande (ex.: 2h) alinha os
+# buckets às bordas do relógio e, quando a janela não cai nessas bordas (o caso
+# de now()-2h), soma dados FORA da janela — inflando o throughput ~1,8x. Com 1m
+# os buckets ficam dentro da janela e arraySum dá o total real de requisições.
+$TsInterval = "1m"
+
+$Token = $env:DT_PLATFORM_TOKEN
+if (-not $Token) { $Token = [Environment]::GetEnvironmentVariable("DT_PLATFORM_TOKEN", "User") }
+if (-not $Token) { throw "Variável de ambiente DT_PLATFORM_TOKEN não definida (nem no processo, nem no usuário)." }
+
+# API token clássico (dt0c01, escopo metrics.read) para métricas RUM builtin:apps.web.*
+# O RUM deste ambiente é clássico e não grava no Grail (user.events vazio).
+$ApiToken = $env:DT_API_TOKEN
+if (-not $ApiToken) { $ApiToken = [Environment]::GetEnvironmentVariable("DT_API_TOKEN", "User") }
+if (-not $ApiToken) { Write-Warning "DT_API_TOKEN ausente: painel de frontend (RUM) será omitido." }
+$ClassicUrl = "https://zey48022.live.dynatrace.com"
+
+# ----------------------------- API DQL --------------------------------------
+function Invoke-Dql([string]$Dql) {
+    $body = @{ query = $Dql; requestTimeoutMilliseconds = 30000; maxResultRecords = 2000 } | ConvertTo-Json -Depth 4
+    $hdr  = @{ Authorization = "Bearer $Token" }
+    $r = Invoke-RestMethod -Method Post -Uri "$EnvUrl/platform/storage/query/v1/query:execute" `
+            -Headers $hdr -ContentType "application/json" -Body $body
+    $tries = 0
+    while ($r.state -in @("RUNNING", "NOT_STARTED") -and $tries -lt 120) {
+        Start-Sleep -Milliseconds 500
+        $tok = [uri]::EscapeDataString($r.requestToken)
+        $r = Invoke-RestMethod -Method Get -Uri "$EnvUrl/platform/storage/query/v1/query:poll?request-token=$tok" -Headers $hdr
+        $tries++
+    }
+    if ($r.state -ne "SUCCEEDED") { throw "Query DQL não concluiu (state=$($r.state))" }
+    return @($r.result.records)
+}
+
+$SubqueryNs = '[ fetch dt.entity.service | fieldsAdd tag = tags | expand tag | filter startsWith(tag, "k8s.namespace.name:") | summarize ns = takeFirst(substring(tag, from: 19)), by: {id} ]'
+# obs.: não há tag k8s.workload.name neste ambiente; o workload remoto é derivado
+# do NOME do serviço (Get-Workload), igual ao agrupamento local.
+$SubqueryNm = '[ fetch dt.entity.service | fields id, name = entity.name, dbVendor = databaseVendor ]'
+
+function Get-EdgesOut([string]$Ns) {
+    Invoke-Dql (('fetch dt.entity.service | filter matchesValue(tags, "k8s.namespace.name:__NS__") ' +
+        '| fieldsAdd other_id = calls[dt.entity.service] | expand other_id | filter isNotNull(other_id) ' +
+        "| lookup $SubqueryNs, sourceField: other_id, lookupField: id, prefix: `"nsl.`" " +
+        "| lookup $SubqueryNm, sourceField: other_id, lookupField: id, prefix: `"t.`" " +
+        '| fields my_name = entity.name, my_id = id, other_id, other_name = t.name, other_ns = nsl.ns, other_db = t.dbVendor ' +
+        '| limit 1500').Replace("__NS__", $Ns))
+}
+function Get-EdgesIn([string]$Ns) {
+    Invoke-Dql (('fetch dt.entity.service | filter matchesValue(tags, "k8s.namespace.name:__NS__") ' +
+        '| fieldsAdd other_id = called_by[dt.entity.service] | expand other_id | filter isNotNull(other_id) ' +
+        "| lookup $SubqueryNs, sourceField: other_id, lookupField: id, prefix: `"nsl.`" " +
+        "| lookup $SubqueryNm, sourceField: other_id, lookupField: id, prefix: `"t.`" " +
+        '| fields my_name = entity.name, my_id = id, other_id, other_name = t.name, other_ns = nsl.ns, other_db = t.dbVendor ' +
+        '| limit 1500').Replace("__NS__", $Ns))
+}
+
+# id da entidade de namespace k8s (para o link à página no Dynatrace) + cluster.
+# Se o nome existir em vários clusters, pega o namespace com mais pods (o ativo);
+# o cluster vem da tag k8s.cluster.name mais comum dos serviços do namespace.
+function Get-NamespaceInfo([string]$Ns) {
+    $id = $null; $cluster = $null
+    try {
+        $recs = @(Invoke-Dql (('fetch dt.entity.cloud_application_instance | filter namespaceName == "__NS__" ' +
+            '| fieldsAdd nsId = belongs_to[dt.entity.cloud_application_namespace] ' +
+            '| summarize pods = count(), by: {nsId} | sort pods desc | limit 1').Replace("__NS__", $Ns)))
+        if ($recs.Count -gt 0 -and $recs[0].nsId) { $id = $recs[0].nsId }
+    } catch { Write-Warning "  id do namespace ($Ns): $($_.Exception.Message)" }
+    try {
+        $c = @(Invoke-Dql (('fetch dt.entity.service | filter matchesValue(tags, "k8s.namespace.name:__NS__") ' +
+            '| fieldsAdd tag = tags | expand tag | filter startsWith(tag, "k8s.cluster.name:") ' +
+            '| summarize n = count(), by: {tag} | sort n desc | limit 1').Replace("__NS__", $Ns)))
+        if ($c.Count -gt 0) { $cluster = $c[0].tag.Substring(17) }
+    } catch {}
+    return @{ id = $id; cluster = $cluster }
+}
+
+function Get-Pods([string]$Ns) {
+    $recs = Invoke-Dql (('fetch dt.entity.cloud_application_instance | filter namespaceName == "__NS__" ' +
+        '| fieldsAdd appId = instance_of[dt.entity.cloud_application] ' +
+        '| fields pod = entity.name, workload = workloadName, phase = cloudApplicationInstancePhase, ' +
+        'node = nodeName, restarts = containerRestartCount, appId | sort pod asc | limit 800').Replace("__NS__", $Ns))
+    $byWl = @{}
+    foreach ($r in $recs) {
+        $wl = $r.workload ?? "(sem workload)"
+        if (-not $byWl[$wl]) { $byWl[$wl] = [System.Collections.ArrayList]::new() }
+        [void]$byWl[$wl].Add(@{ name = $r.pod; phase = $r.phase; node = $r.node; restarts = [int]($r.restarts ?? 0) })
+    }
+    # id do workload (CLOUD_APPLICATION) p/ link à página de workload do Dynatrace
+    $ids = @{}
+    foreach ($r in $recs) {
+        $wl = $r.workload ?? "(sem workload)"
+        if ($r.appId -and -not $ids[$wl]) { $ids[$wl] = $r.appId }
+    }
+    return @{ pods = $byWl; ids = $ids }
+}
+
+# mapa global (namespace|workload) -> id do CLOUD_APPLICATION, para dar link do
+# Dynatrace aos workloads remotos revelados na expansão (inclusive de namespaces
+# não configurados). Uma consulta só; casamento pelo nome do workload/deployment.
+function Get-WorkloadIds {
+    $map = @{}
+    try {
+        $recs = Invoke-Dql ('fetch dt.entity.cloud_application_instance ' +
+            '| fieldsAdd appId = instance_of[dt.entity.cloud_application] ' +
+            '| fields ns = namespaceName, wl = workloadName, appId ' +
+            '| filter isNotNull(appId) and isNotNull(wl) | dedup {ns, wl} | limit 5000')
+        foreach ($r in $recs) { if ($r.ns -and $r.wl -and $r.appId) { $map["$($r.ns)|$($r.wl)"] = $r.appId } }
+    } catch { Write-Warning "  lookup de workload ids: $($_.Exception.Message)" }
+    return $map
+}
+
+# Problemas Davis (melhoria 1). Ao vivo: status ACTIVE. Histórico (snapshots):
+# problemas cuja vigência cruza a janela consultada.
+function Get-ProblemFilter {
+    if ($Historico) {
+        return "| filter event.start <= toTimestamp(`"$To`") and (isNull(event.end) or event.end >= toTimestamp(`"$From`"))"
+    }
+    return '| filter event.status == "ACTIVE"'
+}
+function Get-ProblemRange {
+    if ($Historico) {
+        $ini = [DateTimeOffset]::Parse($From).UtcDateTime.AddDays(-7).ToString("yyyy-MM-ddTHH:mm:ss") + "Z"
+        return "from: `"$ini`", to: `"$To`""
+    }
+    return "from: now()-7d, to: now()"
+}
+
+function Get-Problems([string]$Ns) {
+    try {
+        $recs = Invoke-Dql (("fetch dt.davis.problems, $(Get-ProblemRange) $(Get-ProblemFilter) " +
+            '| filter matchesValue(k8s.namespace.name, "__NS__") ' +
+            '| sort event.start desc | dedup {display_id} ' +
+            '| fields id = display_id, eid = event.id, name = event.name, category = event.category, started = event.start, ' +
+            'root = root_cause_entity_name, workloads = k8s.workload.name, namespaces = k8s.namespace.name | limit 25').Replace("__NS__", $Ns))
+        return @($recs | ForEach-Object {
+            @{ id = $_.id; eid = $_.eid; name = $_.name; category = $_.category; started = "$($_.started)"
+               root = $_.root; workloads = @($_.workloads ?? @()); namespaces = @($_.namespaces ?? @()) }
+        })
+    } catch {
+        Write-Warning "  problemas Davis ($Ns): $($_.Exception.Message)"
+        return @()
+    }
+}
+
+function Get-ProblemsByNs {
+    try {
+        $recs = Invoke-Dql ("fetch dt.davis.problems, $(Get-ProblemRange) $(Get-ProblemFilter) " +
+            '| dedup {display_id} | fieldsAdd nsn = k8s.namespace.name | expand nsn | filter isNotNull(nsn) ' +
+            '| summarize n = countDistinctExact(display_id), by: {nsn} | limit 200')
+        $map = @{}
+        foreach ($r in $recs) { $map[$r.nsn] = [int]$r.n }
+        return $map
+    } catch {
+        Write-Warning "  problemas Davis por namespace: $($_.Exception.Message)"
+        return @{}
+    }
+}
+
+# Por serviço na janela: throughput (req/min), total de requisições e falhas.
+# Retorna id -> @{ rpm; req; err }. A taxa de erro é derivada de err/req.
+function Get-Throughput([string[]]$Ids, [string]$Range) {
+    $out = @{}
+    for ($i = 0; $i -lt $Ids.Count; $i += 80) {
+        $chunk = $Ids[$i..([Math]::Min($i + 79, $Ids.Count - 1))]
+        $inList = '"' + ($chunk -join '","') + '"'
+        $dql = "timeseries { total = sum(dt.service.request.count), failed = sum(dt.service.request.failure_count) }, " +
+               "by: {dt.entity.service}, $Range, interval: $TsInterval, filter: { in(dt.entity.service, {$inList}) } " +
+               "| fieldsAdd req = arraySum(total), err = arraySum(failed) | fields id = dt.entity.service, req, err"
+        foreach ($rec in (Invoke-Dql $dql)) {
+            if ($rec.id -and $null -ne $rec.req) {
+                $out[$rec.id] = @{ rpm = [double]$rec.req / ${JanelaMin}; req = [double]$rec.req; err = [double]($rec.err ?? 0) }
+            }
+        }
+    }
+    return $out
+}
+
+# Baseline da melhoria 6: mesma janela e MESMO DIA DA SEMANA nas 3 semanas
+# anteriores (D-7, D-14, D-21). Comparar com os 3 dias corridos anteriores
+# quebraria nas segundas-feiras (baseline cairia no fim de semana, quase sem
+# tráfego) e dispararia falso alarme em tudo.
+function Get-BaselineRanges {
+    if ($Historico) {
+        $f = [DateTimeOffset]::Parse($From).UtcDateTime
+        $t = [DateTimeOffset]::Parse($To).UtcDateTime
+        return @(1..3 | ForEach-Object {
+            $ff = $f.AddDays(-7 * $_).ToString("yyyy-MM-ddTHH:mm:ss") + "Z"
+            $tt = $t.AddDays(-7 * $_).ToString("yyyy-MM-ddTHH:mm:ss") + "Z"
+            "from: `"$ff`", to: `"$tt`""
+        })
+    }
+    return @(1..3 | ForEach-Object {
+        "from: now()-$((168 * $_) + $JanelaHoras)h, to: now()-$(168 * $_)h"
+    })
+}
+
+# ------------------------- agrupamento de nós -------------------------------
+function Get-Median($Vals) {
+    $v = @($Vals | Where-Object { $null -ne $_ } | Sort-Object)
+    if (-not $v.Count) { return $null }
+    return $v[[Math]::Floor(($v.Count - 1) / 2)]
+}
+
+# Frontends RUM do namespace (pode haver vários, ex.: pje tem PJe-PG e PJe-SG).
+# Detecção automática: tags front-end-relationship dos serviços do namespace cujo
+# nome normalizado casa com o namespace (a tag SEI, comum por integração, não
+# casa e é descartada). Mantém só as RAÍZES: se um frontend normalizado é prefixo
+# de outro que casa (ex.: pjepg é prefixo de pjepgconsulta), o mais longo é uma
+# variante separada (Consulta) e é descartado.
+function Get-FrontendApps([string]$Ns) {
+    $recs = @(Invoke-Dql (('fetch dt.entity.service | filter matchesValue(tags, "k8s.namespace.name:__NS__") ' +
+        '| fieldsAdd tag = tags | expand tag | filter startsWith(tag, "front-end-relationship:") ' +
+        '| summarize n = count(), by: {tag} | sort n desc | limit 20').Replace("__NS__", $Ns)))
+    $normNs = ($Ns.ToLower() -replace "[^a-z0-9]", "")
+    $cand = @($recs | ForEach-Object {
+        $fe = $_.tag.Substring(23)
+        [PSCustomObject]@{ tag = $_.tag; fe = $fe; norm = ($fe.ToLower() -replace "[^a-z0-9]", ""); n = [int]$_.n }
+    } | Where-Object { $_.norm.StartsWith($normNs) -or $normNs.StartsWith($_.norm) })
+    # descarta variantes (nome é extensão de outro candidato que casa)
+    $roots = @($cand | Where-Object {
+        $me = $_
+        -not ($cand | Where-Object { $_.norm -ne $me.norm -and $me.norm.StartsWith($_.norm) })
+    } | Sort-Object -Property n -Descending)
+
+    $apps = @()
+    foreach ($c in $roots) {
+        $app = Invoke-Dql ("fetch dt.entity.application | filter matchesValue(tags, " + ($c.tag | ConvertTo-Json) + ") | fields id, name = entity.name | limit 1")
+        if ($app.Count -gt 0) { $apps += @{ id = $app[0].id; name = $app[0].name } }
+    }
+    if ($apps.Count -gt 0) { return $apps }
+    # fallback: 1 app cujo nome normalizado == namespace
+    $all = Invoke-Dql ('fetch dt.entity.application | fieldsAdd tag = tags | expand tag | filter startsWith(tag, "front-end-relationship:") | summarize name = takeFirst(entity.name), by: {id}')
+    foreach ($a in $all) {
+        if (($a.name.ToLower() -replace "[^a-z0-9]", "") -eq $normNs) { return @(@{ id = $a.id; name = $a.name }) }
+    }
+    return @()
+}
+
+$FrontSel = 'builtin:apps.web.actionDuration.load.browser:splitBy():percentile(50),' +
+            'builtin:apps.web.actionDuration.load.browser:splitBy():avg,' +
+            'builtin:apps.web.actionDuration.load.browser:splitBy():percentile(90),' +
+            'builtin:apps.web.actionDuration.load.browser:splitBy():percentile(99),' +
+            'builtin:apps.web.networkContribution.load:splitBy():avg,' +
+            'builtin:apps.web.serverContribution.load:splitBy():avg,' +
+            'builtin:apps.web.actionCount.category:splitBy():value,' +
+            'builtin:apps.web.actionCount.load.browser:splitBy():value,' +
+            'builtin:apps.web.actionCount.xhr.browser:splitBy():value,' +
+            'builtin:apps.web.countOfUserActionsWithErrors:splitBy():value,' +
+            'builtin:apps.web.apdex.userType:splitBy():avg'
+
+# Uma janela de métricas RUM clássicas do app; retorna hashtable por chave
+function Invoke-ClassicMetrics([string]$AppId, [long]$FromMs, [long]$ToMs) {
+    $entSel = 'entityId("' + $AppId + '")'
+    $uri = "$ClassicUrl/api/v2/metrics/query?metricSelector=$([uri]::EscapeDataString($FrontSel))" +
+           "&entitySelector=$([uri]::EscapeDataString($entSel))&resolution=Inf&from=$FromMs&to=$ToMs"
+    $r = Invoke-RestMethod -Method Get -Uri $uri -Headers @{ Authorization = "Api-Token $ApiToken" }
+    # chave "acoes" (não "count"): em hashtable, .count colide com a propriedade nativa Count
+    $m = @{ p50 = $null; avg = $null; p90 = $null; p99 = $null; network = $null; server = $null; acoes = $null; load = $null; xhr = $null; errors = $null; apdex = $null }
+    foreach ($res in $r.result) {
+        $v = if ($res.data.Count -gt 0 -and $res.data[0].values.Count -gt 0) { $res.data[0].values[0] } else { $null }
+        switch -Wildcard ($res.metricId) {
+            "*actionDuration*percentile(50*"      { $m.p50 = $v }
+            "*actionDuration*percentile(90*"      { $m.p90 = $v }
+            "*actionDuration*percentile(99*"      { $m.p99 = $v }
+            "*actionDuration*:avg"                { $m.avg = $v }
+            "*networkContribution*"               { $m.network = $v }
+            "*serverContribution*"                { $m.server = $v }
+            "*actionCount.category*"              { $m.acoes = $v }
+            "*actionCount.load*"                  { $m.load = $v }
+            "*actionCount.xhr*"                   { $m.xhr = $v }
+            "*countOfUserActionsWithErrors*"      { $m.errors = $v }
+            "*apdex*"                             { $m.apdex = $v }
+        }
+    }
+    return $m
+}
+
+# Métricas do frontend com baseline semanal (mediana de D-7/14/21), mesmo
+# desenho da melhoria 6. Deriva throughput (ações/min) e failure rate (%).
+function Get-FrontendData([string]$Ns) {
+    if (-not $ApiToken) { return @() }
+    $apps = @(Get-FrontendApps $Ns)
+    if ($apps.Count -eq 0) { return @() }
+
+    if ($Historico) {
+        $toMs   = [DateTimeOffset]::Parse($To).ToUnixTimeMilliseconds()
+        $fromMs = [DateTimeOffset]::Parse($From).ToUnixTimeMilliseconds()
+    } else {
+        $toMs   = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+        $fromMs = $toMs - ([long]$JanelaMin * 60000)
+    }
+    $sem = 604800000  # 7 dias em ms
+    function DeriveTput($m) { if ($null -ne $m.acoes) { $m.acoes / $JanelaMin } else { $null } }
+    function DeriveFail($m) { if ($m.acoes -gt 0 -and $null -ne $m.errors) { $m.errors / $m.acoes * 100 } else { $null } }
+    function DeriveLoad($m) { if ($null -ne $m.load) { $m.load / $JanelaMin } else { $null } }
+    function DeriveXhr($m)  { if ($null -ne $m.xhr)  { $m.xhr  / $JanelaMin } else { $null } }
+
+    $result = @()
+    foreach ($app in $apps) {
+        Write-Host "  frontend RUM: $($app.name) - consultando métricas + baseline..."
+        $cur = Invoke-ClassicMetrics $app.id $fromMs $toMs
+        $bases = @(1..3 | ForEach-Object { Invoke-ClassicMetrics $app.id ($fromMs - $sem * $_) ($toMs - $sem * $_) })
+        $metrics = [ordered]@{}
+        foreach ($k in @("p50", "avg", "p90", "p99", "network", "server")) {
+            $metrics[$k] = @{ cur = $cur[$k]; base = Get-Median ($bases | ForEach-Object { $_[$k] }) }
+        }
+        $metrics["tput"]  = @{ cur = DeriveTput $cur;  base = Get-Median ($bases | ForEach-Object { DeriveTput $_ }) }
+        $metrics["fail"]  = @{ cur = DeriveFail $cur;  base = Get-Median ($bases | ForEach-Object { DeriveFail $_ }) }
+        $metrics["apdex"] = @{ cur = $cur.apdex; base = Get-Median ($bases | ForEach-Object { $_.apdex }) }
+        # ações/min por categoria (Load -> front, XHR -> back), com baseline
+        $load = @{ cur = DeriveLoad $cur; base = Get-Median ($bases | ForEach-Object { DeriveLoad $_ }) }
+        $xhr  = @{ cur = DeriveXhr $cur;  base = Get-Median ($bases | ForEach-Object { DeriveXhr $_ }) }
+        # só inclui frontends com tráfego na janela
+        if ($null -ne $metrics["tput"].cur) {
+            $result += @{ name = $app.name; id = $app.id; metrics = $metrics; load = $load; xhr = $xhr }
+        }
+    }
+    return $result
+}
+
+# ---------- visão geral (melhoria 9): todos os frontends RUM e seus namespaces ----------
+function Get-CountByApp([long]$FromMs, [long]$ToMs) {
+    $sel = 'builtin:apps.web.actionCount.category:splitBy("dt.entity.application"):value'
+    $uri = "$ClassicUrl/api/v2/metrics/query?metricSelector=$([uri]::EscapeDataString($sel))&resolution=Inf&from=$FromMs&to=$ToMs"
+    $r = Invoke-RestMethod -Method Get -Uri $uri -Headers @{ Authorization = "Api-Token $ApiToken" }
+    $out = @{}
+    foreach ($d in $r.result[0].data) {
+        $appId = $d.dimensionMap.'dt.entity.application'
+        if ($appId -and $d.values.Count -gt 0 -and $null -ne $d.values[0]) { $out[$appId] = [double]$d.values[0] }
+    }
+    return $out
+}
+
+function Get-Overview {
+    Write-Host "Visão geral: frontends, vínculos e tráfego..." -ForegroundColor Cyan
+    # apps RUM com tag front-end-relationship:*
+    $apps = Invoke-Dql ('fetch dt.entity.application | fieldsAdd tag = tags | expand tag ' +
+        '| filter startsWith(tag, "front-end-relationship:") ' +
+        '| summarize name = takeFirst(entity.name), tagv = takeFirst(tag), by: {id} | limit 100')
+    # vínculo frontend -> namespace pelo lado dos serviços (nº de serviços com a tag)
+    $links = Invoke-Dql ('fetch dt.entity.service | fieldsAdd fe_tag = tags | expand fe_tag ' +
+        '| filter startsWith(fe_tag, "front-end-relationship:") ' +
+        '| fieldsAdd ns_tag = tags | expand ns_tag | filter startsWith(ns_tag, "k8s.namespace.name:") ' +
+        '| summarize services = countDistinctExact(id), by: {fe = substring(fe_tag, from: 23), ns = substring(ns_tag, from: 19)} ' +
+        '| sort services desc | limit 500')
+
+    # ações/min por app: janela atual + baseline semanal (mediana D-7/14/21)
+    $cur = @{}; $bases = @()
+    if ($ApiToken) {
+        if ($Historico) {
+            $toMs   = [DateTimeOffset]::Parse($To).ToUnixTimeMilliseconds()
+            $fromMs = [DateTimeOffset]::Parse($From).ToUnixTimeMilliseconds()
+        } else {
+            $toMs   = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+            $fromMs = $toMs - ([long]$JanelaMin * 60000)
+        }
+        $sem = 604800000
+        $cur   = Get-CountByApp $fromMs $toMs
+        $bases = @(1..3 | ForEach-Object { Get-CountByApp ($fromMs - $sem * $_) ($toMs - $sem * $_) })
+    }
+
+    $frontends = @($apps | ForEach-Object {
+        $feName = $_.tagv.Substring(23)
+        $nsList = @($links | Where-Object { $_.fe -eq $feName } | ForEach-Object { $_.ns })
+        $appId = $_.id
+        $baseVal = Get-Median ($bases | ForEach-Object { $_[$appId] })
+        @{
+            id       = $appId
+            name     = $_.name
+            fe       = $feName
+            tput     = if ($cur.ContainsKey($appId))  { [Math]::Round($cur[$appId] / $JanelaMin, 1) } else { $null }
+            tputBase = if ($null -ne $baseVal)        { [Math]::Round($baseVal / $JanelaMin, 1) } else { $null }
+            ns       = $nsList
+        }
+    })
+    $linkArr = @($links | ForEach-Object { ,@($_.fe, $_.ns, [int]$_.services) })
+    $nsProblems = Get-ProblemsByNs
+    Write-Host "  ok: $($frontends.Count) frontends, $($linkArr.Count) vínculos, $($nsProblems.Count) namespaces com problema ativo" -ForegroundColor Green
+    return @{ frontends = $frontends; links = $linkArr; nsProblems = $nsProblems }
+}
+
+# nome curto do serviço para a visão em nível de serviço (último segmento " - "):
+# "gabinete - back-* - AnotacaoController" -> "AnotacaoController"
+function Get-ShortName([string]$Name) {
+    $p = $Name -split ' - '
+    return $p[$p.Count - 1]
+}
+function Get-Workload([string]$Name, [string]$Ns) {
+    $e = [regex]::Escape($Ns)
+    if ($Name -match "^Background - $e - (.+?)-\*") { return $Matches[1] }
+    if ($Name -match "^$e - (.+?)-\*")              { return $Matches[1] }
+    if ($Name -match "^(.+?)(?:-v\*)?-\* ?/ - $e$") { return $Matches[1] }
+    if ($Name -match "KafkaListener|MessageListener") { return "kafka-listeners" }
+    # genérico: o workload/deployment é o último token "<x>-*" do nome. Colapsa
+    # controllers, Legacy e RabbitMQ do mesmo deployment num só nó (ex.: todos os
+    # "[PJe - PG] - XController -  pjepg-*" viram "pjepg"). Sem isso o pje explodia
+    # em 85 nós porque cada controller virava um "workload".
+    $m = [regex]::Matches($Name, "([A-Za-z0-9][A-Za-z0-9-]*)-\*")
+    if ($m.Count -gt 0) { return $m[$m.Count - 1].Groups[1].Value }
+    return $Name
+}
+
+# Retorna @{ key; label; sub; db } para um serviço qualquer, do ponto de vista de $TargetNs
+function Get-Group([string]$Name, [string]$SvcNs, [string]$Db, [string]$TargetNs) {
+    if ($Db) { return @{ key = "db|$Name"; label = $Name; sub = $Db; db = $true } }
+    if ($SvcNs -eq $TargetNs) {
+        $wl = Get-Workload $Name $TargetNs
+        return @{ key = "wl|$wl"; label = $wl; sub = ""; db = $false }
+    }
+    if ($SvcNs) { return @{ key = "ns|$SvcNs"; label = $SvcNs; sub = "namespace"; db = $false } }
+    if ($Name -match "juds-middleware") { return @{ key = "ns|juds-middleware"; label = "juds-middleware"; sub = "namespace"; db = $false } }
+    if ($Name -eq "Requests to public networks")  { return @{ key = "ext|internet"; label = "Redes públicas"; sub = "externo"; db = $false } }
+    if ($Name -eq "Requests to unmonitored hosts") { return @{ key = "ext|unmon"; label = "Hosts não monitorados"; sub = "externo"; db = $false } }
+    return @{ key = "ext|$Name"; label = $Name; sub = "externo"; db = $false }
+}
+
+# ------------------------------ principal -----------------------------------
+$resultado = [ordered]@{}
+Write-Host "Lookup de ids de workload (para links dos workloads remotos)..." -ForegroundColor Cyan
+$wlIdMap = Get-WorkloadIds
+Write-Host "  $($wlIdMap.Count) workloads mapeados."
+
+foreach ($ns in $Namespaces) {
+    Write-Host "Namespace '$ns': consultando topologia..." -ForegroundColor Cyan
+    $out = Get-EdgesOut $ns
+    $in  = Get-EdgesIn  $ns
+    Write-Host "  arestas: $($out.Count) saída, $($in.Count) entrada. Consultando throughput..."
+
+    # ids de todos os serviços "destino" (o peso da aresta vem do destino)
+    $ids = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($r in $out) { [void]$ids.Add($r.other_id ?? "") }
+    foreach ($r in $in)  { [void]$ids.Add($r.my_id ?? "") }
+    foreach ($r in $out) { [void]$ids.Add($r.my_id ?? "") }
+    $ids.Remove("") | Out-Null
+    $rpm = Get-Throughput @($ids) $TsRange
+
+    Write-Host "  consultando baseline (mesma janela e dia da semana, 3 semanas anteriores)..."
+    $baseVals = @{}
+    foreach ($range in (Get-BaselineRanges)) {
+        $b = Get-Throughput @($ids) $range
+        foreach ($id in $ids) {
+            if (-not $baseVals[$id]) { $baseVals[$id] = [System.Collections.ArrayList]::new() }
+            [void]$baseVals[$id].Add([double]($b[$id].rpm ?? 0))
+        }
+    }
+    # mediana das 3 semanas: uma semana atípica (feriado) não contamina o baseline
+    $base = @{}
+    foreach ($id in $ids) {
+        $v = @($baseVals[$id] | Sort-Object)
+        $base[$id] = if ($v.Count -gt 0) { $v[[Math]::Floor($v.Count / 2)] } else { 0 }
+    }
+
+    # nº de chamadores por serviço destino (para ratear o throughput)
+    $callers = @{}
+    foreach ($r in $in)  { $callers[$r.my_id]    = 1 + ($callers[$r.my_id]    ?? 0) }
+    foreach ($r in $out) { $callers[$r.other_id] = 1 + ($callers[$r.other_id] ?? 0) }
+
+    $nodes = @{}; $edges = @{}; $nodeSvc = @{}; $edgeSvc = @{}
+    # expansão sob demanda: por nó de namespace lateral (in:/out:), o detalhamento
+    # workload local -> workload remoto, para revelar o fluxo entre namespaces
+    $nsExpand = @{}
+    # grafo em nível de SERVIÇO (para explodir um workload central nos seus serviços,
+    # cada um ligado ao serviço remoto concreto que chama/é chamado)
+    $svcNodes = @{}; $svcOut = @{}; $svcIn = @{}
+    function Reg-Svc([string]$id, [string]$name, [string]$wl, [string]$group, [bool]$db, [string]$sns) {
+        if ($id -notlike "SERVICE-*") { return }
+        # nome COMPLETO (igual à lista da barra lateral); o front encurta p/ exibir
+        if (-not $svcNodes[$id]) { $svcNodes[$id] = @{ name = $name; wl = $wl; group = $group; db = $db; ns = $sns } }
+    }
+    function Add-SvcEdge($tbl, [string]$src, [string]$dst, [double]$w, [double]$wb, [double]$req, [double]$err) {
+        if ($src -notlike "SERVICE-*" -or $dst -notlike "SERVICE-*") { return }
+        $k = "$src~>$dst"
+        if (-not $tbl[$k]) { $tbl[$k] = @{ src = $src; dst = $dst; rpm = 0.0; base = 0.0; req = 0.0; err = 0.0 } }
+        $tbl[$k].rpm += $w; $tbl[$k].base += $wb; $tbl[$k].req += $req; $tbl[$k].err += $err
+    }
+    # acumula os serviços de destino que compõem cada aresta (para o tooltip
+    # dizer QUAL serviço é chamado, não só o namespace/workload agregado)
+    function Add-EdgeSvc([string]$ek, [string]$id, [string]$name, [double]$w, [double]$wb, [double]$req, [double]$err, [string]$wl = "") {
+        if ($id -notlike "SERVICE-*") { return }
+        if (-not $edgeSvc[$ek]) { $edgeSvc[$ek] = @{} }
+        if (-not $edgeSvc[$ek][$id]) { $edgeSvc[$ek][$id] = @{ name = $name; wl = $wl; rpm = 0.0; base = 0.0; req = 0.0; err = 0.0 } }
+        $edgeSvc[$ek][$id].rpm  += $w
+        $edgeSvc[$ek][$id].base += $wb
+        $edgeSvc[$ek][$id].req  += $req
+        $edgeSvc[$ek][$id].err  += $err
+    }
+    # req/err (do serviço destino) acumulam sem rateio: a taxa err/req é invariante
+    # ao nº de chamadores, então a dupla contagem se cancela na razão final.
+    # $hasBase: o serviço destino tem histórico (baseline >= 1)? Separa o rpm em
+    # "conhecido" (entra no cálculo do desvio agregado) e "novo" (sem baseline,
+    # não deve inflar o desvio da aresta — só é contabilizado como tráfego novo).
+    function Add-Edge($fromG, $toG, [string]$sideFrom, [string]$sideTo, [double]$w, [double]$wb, [double]$req = 0, [double]$err = 0, [bool]$hasBase = $true) {
+        $fk = "$sideFrom$($fromG.key)"; $tk = "$sideTo$($toG.key)"
+        if ($fk -eq $tk) { return }
+        if (-not $nodes[$fk]) { $nodes[$fk] = @{ id = $fk; label = $fromG.label; sub = $fromG.sub; db = $fromG.db; svcs = 0 } }
+        if (-not $nodes[$tk]) { $nodes[$tk] = @{ id = $tk; label = $toG.label;  sub = $toG.sub;  db = $toG.db;  svcs = 0 } }
+        $ek = "$fk~>$tk"
+        if (-not $edges[$ek]) { $edges[$ek] = @{ rpm = 0.0; base = 0.0; req = 0.0; err = 0.0; rpmKnown = 0.0; rpmNew = 0.0 } }
+        $edges[$ek].rpm  += $w
+        $edges[$ek].base += $wb
+        $edges[$ek].req  += $req
+        $edges[$ek].err  += $err
+        if ($hasBase) { $edges[$ek].rpmKnown += $w } else { $edges[$ek].rpmNew += $w }
+    }
+    # detalhe workload-a-workload de uma aresta cross-namespace (para a expansão).
+    # $sideId é o nó lateral de namespace (ex.: "out:ns|juds-middleware"); $localKey
+    # é o workload do namespace atual; $remoteWl é o workload do outro namespace.
+    function Add-Expand([string]$sideId, [string]$localKey, [string]$remoteWl, [double]$w, [double]$wb, [double]$req, [double]$err, [bool]$hasBase) {
+        if (-not $remoteWl) { $remoteWl = "(sem workload)" }
+        if (-not $nsExpand[$sideId]) { $nsExpand[$sideId] = @{} }
+        $k = "$localKey~>$remoteWl"
+        if (-not $nsExpand[$sideId][$k]) { $nsExpand[$sideId][$k] = @{ local = $localKey; wl = $remoteWl; rpm = 0.0; base = 0.0; req = 0.0; err = 0.0; rpmKnown = 0.0; rpmNew = 0.0 } }
+        $e = $nsExpand[$sideId][$k]
+        $e.rpm += $w; $e.base += $wb; $e.req += $req; $e.err += $err
+        if ($hasBase) { $e.rpmKnown += $w } else { $e.rpmNew += $w }
+    }
+
+    foreach ($r in $out) {
+        $gFrom = Get-Group $r.my_name    $ns             $null       $ns
+        $gTo   = Get-Group $r.other_name $r.other_ns     $r.other_db $ns
+        $div = [Math]::Max(1, ($callers[$r.other_id] ?? 1))
+        $dest = $rpm[$r.other_id]
+        $w  = ($dest.rpm ?? 0) / $div
+        $wb = ($base[$r.other_id] ?? 0) / $div
+        $sideTo = if ($gTo.key -like "wl|*") { "" } else { "out:" }
+        Add-Edge $gFrom $gTo "" $sideTo $w $wb ([double]($dest.req ?? 0)) ([double]($dest.err ?? 0)) (($base[$r.other_id] ?? 0) -ge 1)
+        Add-EdgeSvc "$($gFrom.key)~>$sideTo$($gTo.key)" $r.other_id $r.other_name $w $wb ([double]($dest.req ?? 0)) ([double]($dest.err ?? 0)) (Get-Workload $r.other_name $r.other_ns)
+        # saída para outro namespace: guarda workload local -> workload remoto
+        # (workload remoto derivado do nome, pois não há tag k8s.workload.name)
+        if ($gTo.key -like "ns|*") {
+            Add-Expand "out:$($gTo.key)" $gFrom.key (Get-Workload $r.other_name $r.other_ns) $w $wb ([double]($dest.req ?? 0)) ([double]($dest.err ?? 0)) (($base[$r.other_id] ?? 0) -ge 1)
+        }
+        # grafo de serviço: my (serviço central) -> other (serviço concreto)
+        $dstCenter = ($gTo.key -like "wl|*")
+        Reg-Svc $r.my_id    $r.my_name    (Get-Workload $r.my_name $ns) $null $false $ns
+        Reg-Svc $r.other_id $r.other_name ($dstCenter ? (Get-Workload $r.other_name $ns) : $null) ($dstCenter ? $null : "$sideTo$($gTo.key)") ([bool]$gTo.db) $r.other_ns
+        Add-SvcEdge $svcOut $r.my_id $r.other_id $w $wb ([double]($dest.req ?? 0)) ([double]($dest.err ?? 0))
+        # serviços que compõem o nó destino (para o painel "abrir serviço")
+        $destKey = "$sideTo$($gTo.key)"
+        if (-not $nodeSvc[$destKey]) { $nodeSvc[$destKey] = @{} }
+        $fr = if ($dest.req -gt 0) { [Math]::Round($dest.err / $dest.req * 100, 1) } else { $null }
+        if ($r.other_id -like "SERVICE-*") { $nodeSvc[$destKey][$r.other_id] = @{ id = $r.other_id; name = $r.other_name; fail = $fr } }
+    }
+    foreach ($r in $in) {
+        $gFrom = Get-Group $r.other_name $r.other_ns $r.other_db $ns
+        if ($gFrom.key -like "wl|*") { continue }   # interno já veio pela direção "calls"
+        $gTo = Get-Group $r.my_name $ns $null $ns
+        $div = [Math]::Max(1, ($callers[$r.my_id] ?? 1))
+        $dest = $rpm[$r.my_id]
+        $w  = ($dest.rpm ?? 0) / $div
+        $wb = ($base[$r.my_id] ?? 0) / $div
+        Add-Edge $gFrom $gTo "in:" "" $w $wb ([double]($dest.req ?? 0)) ([double]($dest.err ?? 0)) (($base[$r.my_id] ?? 0) -ge 1)
+        # destino da aresta de entrada é o serviço do namespace (my_id)
+        Add-EdgeSvc "in:$($gFrom.key)~>$($gTo.key)" $r.my_id $r.my_name $w $wb ([double]($dest.req ?? 0)) ([double]($dest.err ?? 0)) (Get-Workload $r.my_name $ns)
+        # entrada de outro namespace: guarda workload remoto -> workload local
+        if ($gFrom.key -like "ns|*") {
+            Add-Expand "in:$($gFrom.key)" $gTo.key (Get-Workload $r.other_name $r.other_ns) $w $wb ([double]($dest.req ?? 0)) ([double]($dest.err ?? 0)) (($base[$r.my_id] ?? 0) -ge 1)
+        }
+        # grafo de serviço: other (caller concreto externo) -> my (serviço central)
+        Reg-Svc $r.my_id    $r.my_name    (Get-Workload $r.my_name $ns) $null $false $ns
+        Reg-Svc $r.other_id $r.other_name $null "in:$($gFrom.key)" ([bool]$gFrom.db) $r.other_ns
+        Add-SvcEdge $svcIn $r.other_id $r.my_id $w $wb ([double]($dest.req ?? 0)) ([double]($dest.err ?? 0))
+        $srcKey = "in:$($gFrom.key)"
+        if (-not $nodeSvc[$srcKey]) { $nodeSvc[$srcKey] = @{} }
+        if ($r.other_id -like "SERVICE-*" -and -not $nodeSvc[$srcKey][$r.other_id]) {
+            $nodeSvc[$srcKey][$r.other_id] = @{ id = $r.other_id; name = $r.other_name; fail = $null }
+        }
+    }
+
+    $podsData = Get-Pods $ns
+
+    # workloads que têm pods mas não apareceram em nenhuma aresta. O caso clássico
+    # é o front (WEB_REQUEST_SERVICE): o nginx serve a SPA e as chamadas front->back
+    # são do navegador (XHR/RUM), não relações service->service, então o front
+    # ficaria invisível. Inclui como nó central para não faltar no mapa.
+    foreach ($wl in @($podsData.pods.Keys)) {
+        $key = "wl|$wl"
+        if (-not $nodes[$key]) {
+            $nPods = @($podsData.pods[$wl]).Count
+            $nodes[$key] = @{ id = $key; label = $wl; sub = "$nPods pods"; db = $false; svcs = 0 }
+        }
+    }
+
+    # frontend RUM: painel de métricas (um ou mais frontends) + nó "Usuários".
+    # O RUM captura duas categorias de ação: Load (carregamento da SPA, servida
+    # pelo front) e XHR (chamadas do navegador ao back). Retrato fiel: Usuários ->
+    # front (Load) e Usuários -> back (XHR). Não existe aresta front -> back no
+    # modelo de serviços (as chamadas são do navegador).
+    $frontendData = @(Get-FrontendData $ns)
+    if ($frontendData.Count -gt 0) {
+        $names = ($frontendData | ForEach-Object { $_.name }) -join ", "
+        $rumG = @{ key = "rum|usuarios"; label = "Usuários"; sub = "RUM: $names"; db = $false }
+        $sumBy = { param($sel) ($frontendData | ForEach-Object { [double](& $sel $_) } | Measure-Object -Sum).Sum }
+        $sumLoad  = & $sumBy { param($f) $f.load.cur ?? 0 }
+        $sumLoadB = & $sumBy { param($f) $f.load.base ?? 0 }
+        $sumXhr   = & $sumBy { param($f) $f.xhr.cur ?? 0 }
+        $sumXhrB  = & $sumBy { param($f) $f.xhr.base ?? 0 }
+        $mkG = { param($n) @{ key = $n.id; label = $n.label; sub = $n.sub; db = $n.db } }
+
+        # Load -> "wl|front" exato, ou o workload front* com mais pods
+        $frontN = @($nodes.Values | Where-Object { $_.id -eq "wl|front" }) | Select-Object -First 1
+        if (-not $frontN) {
+            $frontN = @($nodes.Values | Where-Object { $_.id -like "wl|front*" } |
+                        Sort-Object -Property @{ Expression = { @($podsData.pods[($_.id -replace '^wl\|', '')]).Count } } -Descending) | Select-Object -First 1
+        }
+        if ($frontN -and $sumLoad -gt 0) { Add-Edge $rumG (& $mkG $frontN) "in:" "" ([double]$sumLoad) ([double]$sumLoadB) }
+
+        # XHR -> "wl|back" exato, ou primeiro "back*" não-kafka
+        $backN = @($nodes.Values | Where-Object { $_.id -eq "wl|back" }) | Select-Object -First 1
+        if (-not $backN) { $backN = @($nodes.Values | Where-Object { $_.id -like "wl|back*" -and $_.id -notlike "*kafka*" }) | Select-Object -First 1 }
+        if ($backN -and $sumXhr -gt 0) { Add-Edge $rumG (& $mkG $backN) "in:" "" ([double]$sumXhr) ([double]$sumXhrB) }
+
+        # fallback: sem separação Load/XHR, usa o total no primeiro workload
+        if ($sumLoad -le 0 -and $sumXhr -le 0) {
+            $sumTput = & $sumBy { param($f) $f.metrics["tput"].cur ?? 0 }
+            $sumBase = & $sumBy { param($f) $f.metrics["tput"].base ?? 0 }
+            $anyN = @($nodes.Values | Where-Object { $_.id -like "wl|*" }) | Select-Object -First 1
+            if ($anyN -and $sumTput -gt 0) { Add-Edge $rumG (& $mkG $anyN) "in:" "" ([double]$sumTput) ([double]$sumBase) }
+        }
+    }
+
+    # contagem de serviços por grupo (para o subtítulo) + registra os serviços de
+    # cada workload em nodeServices, para listar no painel (com taxa de erro/link)
+    $svcSeen = @{}
+    foreach ($r in ($out + $in)) {
+        $g = Get-Group $r.my_name $ns $null $ns
+        $svcSeen["$($g.key)|$($r.my_id)"] = $g.key
+        if ($g.key -like "wl|*" -and $r.my_id -like "SERVICE-*") {
+            if (-not $nodeSvc[$g.key]) { $nodeSvc[$g.key] = @{} }
+            if (-not $nodeSvc[$g.key][$r.my_id]) {
+                $sd = $rpm[$r.my_id]
+                $sfr = if ($sd.req -gt 0) { [Math]::Round($sd.err / $sd.req * 100, 1) } else { $null }
+                $nodeSvc[$g.key][$r.my_id] = @{ id = $r.my_id; name = $r.my_name; fail = $sfr }
+            }
+        }
+    }
+    $svcCount = @{}
+    foreach ($v in $svcSeen.Values) { $svcCount[$v] = 1 + ($svcCount[$v] ?? 0) }
+    foreach ($n in $nodes.Values) {
+        $bare = $n.id -replace "^(in:|out:)", ""
+        if ($bare -like "wl|*" -and $svcCount[$bare]) { $n.sub = "$($svcCount[$bare]) serviços" }
+    }
+
+    $resultado[$ns] = @{
+        center   = @($nodes.Values | Where-Object { $_.id -like "wl|*" }  | Sort-Object label | ForEach-Object { @{ id = $_.id; label = $_.label; sub = $_.sub; db = $_.db } })
+        inbound  = @($nodes.Values | Where-Object { $_.id -like "in:*" }  | Sort-Object label | ForEach-Object { @{ id = $_.id; label = $_.label; sub = $_.sub; db = $_.db } })
+        outbound = @($nodes.Values | Where-Object { $_.id -like "out:*" } | Sort-Object label | ForEach-Object { @{ id = $_.id; label = $_.label; sub = $_.sub; db = $_.db } })
+        edges    = @($edges.GetEnumerator() | ForEach-Object {
+                        $p = $_.Key -split "~>", 2
+                        $fail = if ($_.Value.req -gt 0) { [Math]::Round($_.Value.err / $_.Value.req * 100, 1) } else { $null }
+                        # nº de serviços sem histórico (base ~0) que respondem por esta aresta
+                        $nNew = if ($edgeSvc[$_.Key]) { @($edgeSvc[$_.Key].Values | Where-Object { $_.base -lt 1 -and $_.rpm -ge 0.1 }).Count } else { 0 }
+                        ,@($p[0], $p[1], [Math]::Round($_.Value.rpm, 1), [Math]::Round($_.Value.base, 1), $fail,
+                           [Math]::Round($_.Value.rpmKnown, 1), [Math]::Round($_.Value.rpmNew, 1), $nNew)
+                    })
+        pods     = $podsData.pods
+        workloadIds = $podsData.ids
+        nsInfo   = (Get-NamespaceInfo $ns)
+        frontends = $frontendData
+        # @() no ponto de uso: retorno de função com 1 item desembrulha o array
+        problems = @(Get-Problems $ns)
+        nodeServices = ($nodeSvc.GetEnumerator() | ForEach-Object -Begin { $h = @{} } -Process { $h[$_.Key] = @($_.Value.Values) } -End { $h })
+        # serviços de destino por aresta (top por rpm) para o tooltip mostrar o serviço concreto
+        edgeServices = ($edgeSvc.GetEnumerator() | ForEach-Object -Begin { $h = @{} } -Process {
+                            $h[$_.Key] = @($_.Value.GetEnumerator() | ForEach-Object {
+                                @{ id = $_.Key; name = $_.Value.name; wl = $_.Value.wl; rpm = [Math]::Round($_.Value.rpm, 1); base = [Math]::Round($_.Value.base, 1); fail = if ($_.Value.req -gt 0) { [Math]::Round($_.Value.err / $_.Value.req * 100, 1) } else { $null } }
+                            } | Sort-Object -Property @{ Expression = { $_.rpm } } -Descending | Select-Object -First 20)
+                        } -End { $h })
+        # expansão: por nó de namespace lateral, os workloads remotos (coluna) e as
+        # arestas workload local <-> workload remoto [local, wlRemoto, rpm, base, fail, rpmKnown, rpmNew]
+        nsExpand = ($nsExpand.GetEnumerator() | ForEach-Object -Begin { $h = @{} } -Process {
+                        $buckets = @($_.Value.Values)
+                        $edgesW = @($buckets | ForEach-Object {
+                            $f = if ($_.req -gt 0) { [Math]::Round($_.err / $_.req * 100, 1) } else { $null }
+                            ,@($_.local, $_.wl, [Math]::Round($_.rpm, 1), [Math]::Round($_.base, 1), $f, [Math]::Round($_.rpmKnown, 1), [Math]::Round($_.rpmNew, 1))
+                        })
+                        $nsLabel = $_.Key -replace '^(in:|out:)ns\|', ''
+                        $wlAgg = @{}
+                        foreach ($b in $buckets) {
+                            if (-not $wlAgg[$b.wl]) { $wlAgg[$b.wl] = @{ wl = $b.wl; rpm = 0.0; req = 0.0; err = 0.0 } }
+                            $wlAgg[$b.wl].rpm += $b.rpm; $wlAgg[$b.wl].req += $b.req; $wlAgg[$b.wl].err += $b.err
+                        }
+                        $wls = @($wlAgg.Values | ForEach-Object {
+                            @{ wl = $_.wl; id = $wlIdMap["$nsLabel|$($_.wl)"]; rpm = [Math]::Round($_.rpm, 1); fail = if ($_.req -gt 0) { [Math]::Round($_.err / $_.req * 100, 1) } else { $null } }
+                        } | Sort-Object -Property @{ Expression = { $_.rpm } } -Descending)
+                        $h[$_.Key] = @{ workloads = $wls; edges = $edgesW }
+                    } -End { $h })
+        # grafo em nível de serviço (para explodir um workload central)
+        serviceGraph = @{
+            svc = ($svcNodes.GetEnumerator() | ForEach-Object -Begin { $h = @{} } -Process { $h[$_.Key] = $_.Value } -End { $h })
+            out = @($svcOut.Values | ForEach-Object {
+                        $f = if ($_.req -gt 0) { [Math]::Round($_.err / $_.req * 100, 1) } else { $null }
+                        ,@($_.src, $_.dst, [Math]::Round($_.rpm, 1), [Math]::Round($_.base, 1), $f)
+                    })
+            in  = @($svcIn.Values | ForEach-Object {
+                        $f = if ($_.req -gt 0) { [Math]::Round($_.err / $_.req * 100, 1) } else { $null }
+                        ,@($_.src, $_.dst, [Math]::Round($_.rpm, 1), [Math]::Round($_.base, 1), $f)
+                    })
+        }
+    }
+    Write-Host "  ok: $($resultado[$ns].center.Count) workloads, $($resultado[$ns].inbound.Count) origens, $($resultado[$ns].outbound.Count) destinos, $($resultado[$ns].edges.Count) arestas" -ForegroundColor Green
+}
+
+$payload = @{
+    generatedAt = (Get-Date).ToString("dd/MM/yyyy HH:mm")
+    window      = if ($Historico) { "$From a $To" } else { "últimas ${JanelaHoras}h" }
+    namespaces  = $resultado
+    overview    = (Get-Overview)
+}
+$json = $payload | ConvertTo-Json -Depth 10 -Compress
+$js = if ($Label) {
+    "window.MAPA_SNAPSHOTS = window.MAPA_SNAPSHOTS || {}; window.MAPA_SNAPSHOTS[$($Label | ConvertTo-Json)] = $json;"
+} else {
+    "window.MAPA_DATA = $json;"
+}
+[IO.File]::WriteAllText($OutFile, $js, [Text.UTF8Encoding]::new($false))
+Write-Host "Gerado: $OutFile" -ForegroundColor Green

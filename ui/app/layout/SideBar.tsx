@@ -9,6 +9,9 @@ const exemplos = [
   { label: "Postgres DBs (KPI)", path: '/dashboards/Postgres' },
   { label: 'Capacity Optimization', path: '/dashboards/Optimization' },
   { label: 'Análise de Workload', path: '/dashboards/WorkloadAnalysis' },
+  { label: 'Capacidade do Cluster', path: '/dashboards/ClusterCapacity' },
+  { label: 'Crescimento e Capacidade', path: '/dashboards/GrowthCapacity' },
+  { label: 'Mapa de Chamadas', path: '/dashboards/MapaChamadas' },
   { label: 'OneAgent Deployments', path: '/dashboards/OneAgent' },
   { label: 'Problemas (Davis)', path: '/dashboards/Problems' },
 ];
